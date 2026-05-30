@@ -5,7 +5,7 @@ export const config = {
   // ── Core ──────────────────────────────────────────────
   botName:    process.env.BOT_NAME    || 'GODZILLA',
   prefix:     process.env.BOT_PREFIX  || '.',
-  ownerNumber: (process.env.OWNER_NUMBER || '911234567890') + '@s.whatsapp.net',
+  ownerNumber: (process.env.OWNER_NUMBER || '918147120709') + '@s.whatsapp.net',
   mode:       process.env.BOT_MODE    || 'public',   // public | private | group
   cooldown:   parseInt(process.env.COOLDOWN_SECONDS || '5'),
 

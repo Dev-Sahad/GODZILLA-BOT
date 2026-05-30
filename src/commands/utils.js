@@ -53,9 +53,152 @@ export async function aliveCommand(sock, msg) {
  * .info — Bot information
  */
 export async function infoCommand(sock, msg) {
+<<<<<<< HEAD
   const jid = msg.key.remoteJid;
   await sock.sendMessage(jid, {
     text: `ℹ️ *${config.botName} — Bot Info*\n\n🤖 *Name:* ${config.botName}\n📌 *Prefix:* ${config.prefix}\n⚙️ *Mode:* ${config.mode}\n💻 *Platform:* WhatsApp\n🔧 *Engine:* Baileys (Node.js)\n📦 *Version:* 2.0.0\n\n👤 *Owner:* Sxhd\n\n_Type ${config.prefix}help to see all commands_`,
+=======
+  const jid     = msg.key.remoteJid;
+  const uptime  = formatUptime(Date.now() - startTime);
+
+  // Live ping
+  const before  = Date.now();
+  await sock.sendMessage(jid, { text: '🦖 *Loading GODZILLA info…*' });
+  const ping    = Date.now() - before;
+
+  // Live time & date
+  const now     = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = now.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const text =
+`╔═══════════════════════════╗
+║   🦖 *GODZILLA BOT v2.0.0*  ║
+║      _by Sxhd_              ║
+╚═══════════════════════════╝
+
+━━━━━━ 🪪 *IDENTITY* ━━━━━━━
+📛 *Name*        : GODZILLA
+🔖 *Version*     : 2.0.0
+👑 *Owner*       : Sxhd
+🏠 *Community*   : SHA COMMUNITY
+📅 *Born*        : 2025
+🌍 *Status*      : 🟢 _Online 24/7_
+
+━━━━━━ ⚙️ *SYSTEM* ━━━━━━━━
+📌 *Prefix*      : ${config.prefix}
+💬 *Commands*    : 50+
+🔧 *Engine*      : Baileys
+💻 *Runtime*     : Node.js v24
+🧠 *AI Model*    : Claude Haiku
+🌐 *Platform*    : WhatsApp Web
+📡 *Connection*  : WebSocket
+
+━━━━━━ 📊 *LIVE STATS* ━━━━━━
+⏱️ *Uptime*      : ${uptime}
+🕒 *Time*        : ${timeStr}
+📅 *Date*        : ${dateStr}
+⚡ *Ping*        : ${ping}ms
+🟢 *Mode*        : ${config.mode}
+
+━━━━━━ 🎯 *FEATURES* ━━━━━━━
+✅ YouTube Music Downloader
+✅ YouTube Video (360p–1080p)
+✅ Spotify Track Downloader
+✅ Instagram Reels Downloader
+✅ TikTok Video Downloader
+✅ Twitter/X Video Downloader
+✅ Facebook Video Downloader
+✅ Reddit Video Downloader
+✅ 4K & 8K PC Wallpapers
+✅ Mobile Portrait Wallpapers
+✅ AI Chat with Memory
+✅ AI Image Understanding
+✅ Live Weather + 3 Day Forecast
+✅ Image to Sticker Converter
+✅ Video to Animated Sticker
+✅ Currency Converter (Live Rates)
+✅ Multi-language Translator
+✅ Text to Speech (Voice Note)
+✅ Math Calculator
+✅ Song Lyrics Finder
+✅ YouTube Search
+✅ Group Kick/Promote/Demote
+✅ Group Mute/Unmute
+✅ Tag All Members
+✅ Trivia Quiz Game
+✅ Magic 8-Ball
+✅ Rock Paper Scissors
+✅ Dice Roll & Coin Flip
+✅ Random Memes from Reddit
+✅ Jokes & Quotes
+✅ Broadcast to All Groups
+✅ Auto Reconnect 24/7
+
+━━━━━━ 👨‍💻 *CREDITS* ━━━━━━━
+💻 *Developer*   : Sxhd
+🦖 *Project*     : GODZILLA Bot
+🏠 *Built for*   : SHA COMMUNITY
+🧠 *AI by*       : Anthropic (Claude)
+🔧 *Bot by*      : Baileys Framework
+📦 *Hosted on*   : Railway.app
+
+━━━━━━ 📬 *GET IN TOUCH* ━━━━━
+
+╔ 💬 *WhatsApp* ╗
+║ Contact via WhatsApp ║
+╚══════════════════════╝
+
+╔ 📸 *Instagram* ╗
+║ @sahad_____sha ║
+╚════════════════╝
+
+╔ 🐙 *GitHub* ╗
+║ github.com/SxhdSha ║
+╚════════════════════╝
+
+╔ 🐙 *GitHub 2* ╗
+║ github.com/Dev-Sahad ║
+╚══════════════════════╝
+
+╔ 🎮 *Discord* ╗
+║ sxhd_sha ║
+╚══════════╝
+
+_For bugs & suggestions_
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+_Type ${config.prefix}help to see all commands_
+_🦖 GODZILLA — King of Bots_
+_Always Online. Always Ready._`;
+
+  await sock.sendMessage(jid, { text });
+
+  // Second message — clickable contact links
+  await sock.sendMessage(jid, {
+    text:
+`📬 *CONTACT SXHD — SHA COMMUNITY*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💬 *WhatsApp*
+https://wa.me/918147120709
+
+📸 *Instagram*
+https://instagram.com/sahad_____sha
+
+🐙 *GitHub*
+https://github.com/SxhdSha
+
+🐙 *GitHub 2*
+https://github.com/Dev-Sahad
+
+🎮 *Discord*
+https://discord.gg/sxhd_sha
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+_Tap any link to open_ 👆
+_For bugs & suggestions only_`,
+>>>>>>> b554de4 (Initial commit: Project setup)
   });
 }
 

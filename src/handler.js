@@ -131,28 +131,51 @@ const COMMANDS = {
 // ── Main message handler ──────────────────────────────────────────────────────
 export async function handleMessage(sock, msg) {
   try {
-    // Ignore status broadcasts and own messages
+    // Ignore status broadcasts
     if (msg.key.remoteJid === 'status@broadcast') return;
-    if (msg.key.fromMe) return;
 
+    // Ignore own messages ONLY if not a command
+    // (some bots use same number — allow fromMe commands)
     const text   = getMessageText(msg);
     const sender = getSender(msg);
     const jid    = msg.key.remoteJid;
 
+    // Debug — log ALL incoming messages so we can see what's arriving
+    if (text) {
+      logger.info(`📨 MSG from ${sender} | jid: ${jid} | fromMe: ${msg.key.fromMe} | text: "${text}"`);
+    }
+
+    // Ignore own messages
+    if (msg.key.fromMe) return;
+
+    // Ignore empty messages
+    if (!text) return;
+
     // Must start with prefix
-    if (!text.startsWith(config.prefix)) return;
+    if (!text.startsWith(config.prefix)) {
+      logger.info(`⏭️  No prefix found in: "${text}" (prefix is "${config.prefix}")`);
+      return;
+    }
 
     // Parse command and args
     const body    = text.slice(config.prefix.length).trim();
     const [cmd, ...args] = body.split(/\s+/);
-    const command = cmd.toLowerCase();
+    const command = cmd?.toLowerCase();
 
     if (!command) return;
 
+    logger.info(`🔍 Command detected: [${command}] from ${sender}`);
+
     // ── Mode guard ────────────────────────────────────────────────────────────
     const inGroup  = isGroup(msg);
-    if (config.mode === 'private' && sender !== config.ownerNumber) return;
-    if (config.mode === 'group'   && !inGroup) return;
+    if (config.mode === 'private' && sender !== config.ownerNumber) {
+      logger.info(`🔒 Private mode — blocked ${sender}`);
+      return;
+    }
+    if (config.mode === 'group' && !inGroup) {
+      logger.info(`🔒 Group mode — blocked DM from ${sender}`);
+      return;
+    }
 
     // ── Cooldown check ────────────────────────────────────────────────────────
     if (sender !== config.ownerNumber && isOnCooldown(sender, command)) {
@@ -165,12 +188,11 @@ export async function handleMessage(sock, msg) {
     // ── Look up command ───────────────────────────────────────────────────────
     const handler = COMMANDS[command];
     if (!handler) {
-      // Unknown command — silently ignore or send tip
-      // await sock.sendMessage(jid, { text: `❓ Unknown command. Type ${config.prefix}help` });
+      logger.info(`❓ Unknown command: [${command}]`);
       return;
     }
 
-    logger.info(`CMD [${command}] from ${sender} | args: ${args.join(' ') || '(none)'}`);
+    logger.info(`✅ Executing [${command}] for ${sender}`);
 
     // ── Execute ───────────────────────────────────────────────────────────────
     await handler(sock, msg, args);

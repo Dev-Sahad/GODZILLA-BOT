@@ -53,11 +53,6 @@ export async function aliveCommand(sock, msg) {
  * .info — Bot information
  */
 export async function infoCommand(sock, msg) {
-<<<<<<< HEAD
-  const jid = msg.key.remoteJid;
-  await sock.sendMessage(jid, {
-    text: `ℹ️ *${config.botName} — Bot Info*\n\n🤖 *Name:* ${config.botName}\n📌 *Prefix:* ${config.prefix}\n⚙️ *Mode:* ${config.mode}\n💻 *Platform:* WhatsApp\n🔧 *Engine:* Baileys (Node.js)\n📦 *Version:* 2.0.0\n\n👤 *Owner:* Sxhd\n\n_Type ${config.prefix}help to see all commands_`,
-=======
   const jid     = msg.key.remoteJid;
   const uptime  = formatUptime(Date.now() - startTime);
 
@@ -198,7 +193,6 @@ https://discord.gg/sxhd_sha
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 _Tap any link to open_ 👆
 _For bugs & suggestions only_`,
->>>>>>> b554de4 (Initial commit: Project setup)
   });
 }
 

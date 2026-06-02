@@ -66,28 +66,38 @@ async function connectBot() {
     }
 
     if (connection === 'close') {
-      const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-      logger.warn(`Connection closed. Reason: ${reason}`);
+      // Try to extract a numeric reason code, but fall back to message checks
+      const boomReason = lastDisconnect?.error ? new Boom(lastDisconnect.error) : null;
+      const reasonCode = boomReason?.output?.statusCode || lastDisconnect?.status || null;
+      const reasonMsg  = lastDisconnect?.error?.message || boomReason?.message || '';
 
-      // Reconnect logic
-      if (reason === DisconnectReason.badSession) {
+      logger.warn(`Connection closed. Reason code: ${reasonCode} message: ${reasonMsg}`);
+
+      // If WhatsApp reports a 'conflict' (connection replaced), stop reconnecting
+      if (String(reasonMsg).toLowerCase().includes('conflict') || reasonCode === 440) {
+        logger.error('Session conflict detected (another session replaced this one). Exiting to avoid reconnect loop.');
+        process.exit(1);
+      }
+
+      // Reconnect logic with a small backoff to avoid tight loops
+      if (reasonCode === DisconnectReason.badSession) {
         logger.error('Bad session — deleting session and restarting…');
         await fs.remove(config.sessionsDir);
-        connectBot();
+        setTimeout(connectBot, 3000);
       } else if (
-        reason === DisconnectReason.connectionClosed    ||
-        reason === DisconnectReason.connectionLost      ||
-        reason === DisconnectReason.connectionReplaced  ||
-        reason === DisconnectReason.timedOut
+        reasonCode === DisconnectReason.connectionClosed    ||
+        reasonCode === DisconnectReason.connectionLost      ||
+        reasonCode === DisconnectReason.connectionReplaced  ||
+        reasonCode === DisconnectReason.timedOut
       ) {
         logger.info('Reconnecting…');
-        connectBot();
-      } else if (reason === DisconnectReason.loggedOut) {
+        setTimeout(connectBot, 3000);
+      } else if (reasonCode === DisconnectReason.loggedOut) {
         logger.error('Logged out — delete the sessions folder and restart.');
         process.exit(1);
       } else {
-        logger.warn(`Unknown disconnect reason ${reason}. Reconnecting…`);
-        connectBot();
+        logger.warn(`Unknown disconnect reason ${reasonCode}. Reconnecting with backoff…`);
+        setTimeout(connectBot, 3000);
       }
     }
   });

@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: godzilla-bot
+    runtime: node
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production

@@ -238,6 +238,12 @@ export async function helpCommand(sock, msg, args) {
 ▸ ${p}lyrics <song>
 ▸ ${p}ytsearch <query>
 
+━━━━━━ 🔊 *MYINSTANTS SOUNDS* ━
+▸ ${p}sound <name>  _(e.g. ${p}sound bruh)_
+▸ ${p}sounds <search>  _(browse sounds)_
+▸ ${p}randomsound  _(play random sound)_
+▸ Shortcuts: ${p}bruh, ${p}boom, ${p}fbi, ${p}emotional, ${p}airhorn, ${p}fart, ${p}tada, ${p}sheesh
+
 ━━━━━━ 🎮 *GAMES & FUN* ━━━━━━
 ▸ ${p}trivia  _(interactive quiz)_
 ▸ ${p}8ball <question>

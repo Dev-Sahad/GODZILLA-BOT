@@ -46,6 +46,12 @@ import {
   githubCommand,
   passwordCommand,
 } from './commands/extra.js';
+import {
+  soundCommand,
+  soundsListCommand,
+  randomSoundCommand,
+  soundShortcutCommand,
+} from './commands/myinstants.js';
 
 // ── Command registry ──────────────────────────────────────────────────────────
 const COMMANDS = {
@@ -141,6 +147,28 @@ const COMMANDS = {
   'password':  passwordCommand,
   'pass':      passwordCommand,
   'pw':        passwordCommand,
+
+  // MyInstants Meme Sounds
+  'sound':        soundCommand,
+  'instant':      soundCommand,
+  'instants':     soundsListCommand,
+  'sounds':       soundsListCommand,
+  'searchsound':  soundsListCommand,
+  'randomsound':  randomSoundCommand,
+  'randominstant': randomSoundCommand,
+
+  // Meme Audio Shortcuts
+  'bruh':         (sock, msg) => soundShortcutCommand(sock, msg, 'bruh'),
+  'boom':         (sock, msg) => soundShortcutCommand(sock, msg, 'vine boom'),
+  'vineboom':     (sock, msg) => soundShortcutCommand(sock, msg, 'vine boom'),
+  'fbi':          (sock, msg) => soundShortcutCommand(sock, msg, 'fbi open up'),
+  'emotional':    (sock, msg) => soundShortcutCommand(sock, msg, 'emotional damage'),
+  'airhorn':      (sock, msg) => soundShortcutCommand(sock, msg, 'mlg airhorn'),
+  'fart':         (sock, msg) => soundShortcutCommand(sock, msg, 'dry fart'),
+  'tada':         (sock, msg) => soundShortcutCommand(sock, msg, 'tada'),
+  'yeet':         (sock, msg) => soundShortcutCommand(sock, msg, 'yeet'),
+  'sheesh':       (sock, msg) => soundShortcutCommand(sock, msg, 'sheesh'),
+  'augh':         (sock, msg) => soundShortcutCommand(sock, msg, 'augh'),
 
   // Tools
   'calc':      calcCommand,

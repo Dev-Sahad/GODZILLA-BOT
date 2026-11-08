@@ -17,6 +17,7 @@
 | 🛠️ Smart Tools | `.weather`, `.calc`, `.currency`, `.tr`, `.tts`, `.sticker` | Live weather, math, FX rates, translator, voice notes, stickers |
 | 💡 Productivity | `.remind`, `.fancy`, `.password`, `.wiki`, `.github` | Timed reminders, aesthetic fonts, passwords, Wikipedia, GitHub |
 | 🐾 Animals & Art | `.cat`, `.dog`, `.anime`, `.fact` | Cute animals, anime art, random facts of the day |
+| 🔊 Meme Sounds | `.sound`, `.sounds`, `.randomsound` | **MyInstants integration** (play 10,000+ meme clips + shortcuts like `.bruh`, `.boom`) |
 | 👥 Group Admin | `.kick`, `.promote`, `.demote`, `.mute`, `.unmute`, `.groupinfo`, `.tagall` | Full group moderation suite |
 | 🎮 Mini Games | `.trivia`, `.8ball`, `.rps`, `.dice`, `.flip` | Interactive trivia, magic 8-ball, RPS, dice roll, coin flip |
 | 🔍 Search & Fun | `.ytsearch`, `.lyrics`, `.meme`, `.joke`, `.quote` | YouTube search, song lyrics, Reddit memes, jokes |
@@ -117,6 +118,15 @@ On first run, a **QR code** appears in the terminal — scan it with WhatsApp (*
 .meme                        → Random meme from Reddit
 .joke                        → Random joke
 .quote                       → Inspirational quote
+```
+
+### 🔊 MyInstants Meme Sounds
+```
+.sound <name>                → Play any sound from MyInstants (e.g. .sound bruh, .sound vine boom)
+.sounds <keyword>            → Search and browse matching meme sound buttons
+.randomsound                 → Play a random trending meme sound
+Direct Shortcuts:
+.bruh, .boom, .fbi, .emotional, .airhorn, .fart, .tada, .yeet, .sheesh, .augh
 ```
 
 ### 👥 Group Admin Commands

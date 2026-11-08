@@ -7,7 +7,35 @@ import fs from 'fs-extra';
 import { getTempPath, cleanupFile, formatBytes } from '../helpers.js';
 import { config } from '../config.js';
 
-const COBALT_API = 'https://api.cobalt.tools/api/json';
+const COBALT_ENDPOINTS = [
+  'https://api.cobalt.tools',
+  'https://cobalt.api.scidsg.org',
+  'https://cobalt-api.kwiatekm.tokyo',
+];
+
+async function requestCobalt(url) {
+  let lastErr = null;
+  for (const endpoint of COBALT_ENDPOINTS) {
+    try {
+      const res = await axios.post(
+        endpoint,
+        { url, vCodec: 'h264', vQuality: '720', aFormat: 'mp3', isAudioOnly: false },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          },
+          timeout: 20000,
+        }
+      );
+      if (res.data) return res.data;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('Media extraction servers are currently busy.');
+}
 
 const SUPPORTED_PLATFORMS = {
   instagram: ['instagram.com'],
@@ -55,20 +83,7 @@ export async function socialDlCommand(sock, msg, args) {
   });
 
   try {
-    // Use cobalt.tools — free, open-source media downloader API
-    const response = await axios.post(
-      COBALT_API,
-      { url, vCodec: 'h264', vQuality: '720', aFormat: 'mp3', isAudioOnly: false },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Accept:         'application/json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    const data = response.data;
+    const data = await requestCobalt(url);
 
     if (data.status === 'error') {
       throw new Error(data.text || 'Download failed');

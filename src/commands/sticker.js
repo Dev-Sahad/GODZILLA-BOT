@@ -27,13 +27,26 @@ export async function stickerCommand(sock, msg, args) {
   await sock.sendMessage(jid, { text: '🎨 *Creating sticker…*' });
 
   try {
+    const messageToDownload = msg.message?.imageMessage
+      ? msg
+      : {
+          key: {
+            remoteJid: jid,
+            id: msg.message?.extendedTextMessage?.contextInfo?.stanzaId,
+            participant: msg.message?.extendedTextMessage?.contextInfo?.participant,
+          },
+          message: quoted,
+        };
+
     // Use Baileys exported downloadMediaMessage function
     const buffer = await downloadMediaMessage(
-      msg,
+      messageToDownload,
       'buffer',
       {},
-      { logger: console, reuploadRequest: sock.updateMediaMessage }
+      { reuploadRequest: sock.updateMediaMessage }
     );
+
+    if (!buffer) throw new Error('Could not download image.');
 
     const inputPath  = await getTempPath(`sticker_in_${Date.now()}.jpg`);
     const outputPath = await getTempPath(`sticker_out_${Date.now()}.webp`);

@@ -1,68 +1,72 @@
-// commands/spotify.js — Spotify Track Downloader (.spotify)
-// Strategy: Gets track metadata from Spotify, then searches & downloads from YouTube
-import ytdl from 'ytdl-core';
+// commands/spotify.js — 100% Free & Open-Source Spotify Downloader (.spotify)
+// Zero API keys required • Uses Spotify public oEmbed + YouTube Audio Engine
+
 import ytSearch from 'yt-search';
 import fs from 'fs-extra';
 import axios from 'axios';
+import ytdl from '../ytdl.js';
 import { getTempPath, cleanupFile, formatBytes } from '../helpers.js';
 import { config } from '../config.js';
 
-// ── Spotify token cache ───────────────────────────────────────────────────────
-let spotifyToken = null;
-let tokenExpiry  = 0;
-
-async function getSpotifyToken() {
-  if (spotifyToken && Date.now() < tokenExpiry) return spotifyToken;
-  const { clientId, clientSecret } = config.spotify;
-  if (!clientId || !clientSecret) return null;
-
-  const res = await axios.post(
-    'https://accounts.spotify.com/api/token',
-    'grant_type=client_credentials',
-    {
+/**
+ * Open-source Spotify track metadata resolver (Zero API keys required)
+ * Uses Spotify public oEmbed & open graph tags
+ */
+async function getOpenSpotifyTrackInfo(url) {
+  try {
+    const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`;
+    const res = await axios.get(oembedUrl, {
       headers: {
-        Authorization: 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
-    }
-  );
-  spotifyToken = res.data.access_token;
-  tokenExpiry  = Date.now() + (res.data.expires_in - 60) * 1000;
-  return spotifyToken;
-}
+      timeout: 8000,
+    });
 
-async function getSpotifyTrackInfo(url) {
-  const token   = await getSpotifyToken();
-  if (!token) return null;
+    const data = res.data;
+    let title = data.title || '';
+    let artist = '';
+    let image = data.thumbnail_url;
 
-  // Extract track ID from URL
-  const match = url.match(/track\/([a-zA-Z0-9]+)/);
-  if (!match) return null;
+    // Fetch page Open Graph tags for artist details
+    try {
+      const pageRes = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        timeout: 6000,
+      });
+      const html = pageRes.data;
+      const descMatch = html.match(/<meta property="og:description" content="([^"]+)"/);
+      if (descMatch) {
+        const parts = descMatch[1].split('·').map(s => s.trim());
+        if (parts[0]) artist = parts[0];
+      }
+      const ogImage = html.match(/<meta property="og:image" content="([^"]+)"/);
+      if (ogImage && !image) image = ogImage[1];
+    } catch {}
 
-  const res = await axios.get(`https://api.spotify.com/v1/tracks/${match[1]}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  const track = res.data;
-  return {
-    name:    track.name,
-    artist:  track.artists.map(a => a.name).join(', '),
-    album:   track.album.name,
-    duration: Math.round(track.duration_ms / 1000),
-    image:   track.album.images[0]?.url,
-  };
+    return {
+      title,
+      artist: artist || 'Unknown Artist',
+      image,
+      searchQuery: artist ? `${title} ${artist}` : title,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
- * .spotify <Spotify track URL or search query>
+ * .spotify <Spotify track URL or song title>
  */
 export async function spotifyCommand(sock, msg, args) {
-  const jid   = msg.key.remoteJid;
+  const jid = msg.key.remoteJid;
   const input = args.join(' ').trim();
 
   if (!input) {
     return sock.sendMessage(jid, {
-      text: `❌ *Usage:* ${config.prefix}spotify <Spotify URL or song name>\n\nExamples:\n${config.prefix}spotify https://open.spotify.com/track/...\n${config.prefix}spotify Blinding Lights`,
+      text: `🎧 *Usage:* ${config.prefix}spotify <Spotify track URL or song name>\n\n*Examples:*\n${config.prefix}spotify https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT\n${config.prefix}spotify Starboy The Weeknd`,
     });
   }
 
@@ -70,34 +74,37 @@ export async function spotifyCommand(sock, msg, args) {
 
   try {
     let searchQuery = input;
-    let trackMeta   = null;
+    let trackMeta = null;
 
-    // If it's a Spotify URL, extract metadata
+    // Check if input is a Spotify link
     if (input.includes('spotify.com/track/')) {
-      trackMeta = await getSpotifyTrackInfo(input);
-      if (trackMeta) {
-        searchQuery = `${trackMeta.name} ${trackMeta.artist}`;
+      await sock.sendMessage(jid, { text: '🔍 *Resolving track metadata…*' });
+      trackMeta = await getOpenSpotifyTrackInfo(input);
+
+      if (trackMeta && trackMeta.title) {
+        searchQuery = `${trackMeta.title} ${trackMeta.artist}`.trim();
         await sock.sendMessage(jid, {
-          text: `🎵 *Found on Spotify:*\n🎤 ${trackMeta.name}\n👤 ${trackMeta.artist}\n💿 ${trackMeta.album}`,
+          text: `🎵 *Found on Spotify:*\n📌 *Title:* ${trackMeta.title}\n🎤 *Artist:* ${trackMeta.artist}`,
         });
       }
     }
 
-    // Search YouTube for the track
-    await sock.sendMessage(jid, { text: `🔍 *Searching YouTube for:* ${searchQuery}` });
-    const results = await ytSearch(searchQuery + ' audio');
-    const video   = results.videos[0];
-    if (!video) throw new Error('Could not find audio source');
+    // Search audio source
+    await sock.sendMessage(jid, { text: `🔍 *Matching audio for:* _${searchQuery}_…` });
+    const results = await ytSearch(`${searchQuery} audio`);
+    const video = results.videos[0];
+
+    if (!video) throw new Error('Could not find matching audio source');
 
     const videoInfo = await ytdl.getInfo(video.url);
-    const format    = ytdl.chooseFormat(videoInfo.formats, { quality: 'highestaudio', filter: 'audioonly' });
+    const format = ytdl.chooseFormat(videoInfo.formats, { quality: 'highestaudio', filter: 'audioonly' });
 
     await sock.sendMessage(jid, {
-      text: `⬇️ *Downloading audio…*\n📌 Source: ${video.title}`,
+      text: `⬇️ *Downloading audio…*\n📌 Track: ${trackMeta?.title || video.title}`,
     });
 
     const tempPath = await getTempPath(`spotify_${Date.now()}.mp4`);
-    const stream   = ytdl(video.url, { format });
+    const stream = ytdl(video.url, { format });
 
     await new Promise((resolve, reject) => {
       const ws = fs.createWriteStream(tempPath);
@@ -110,14 +117,14 @@ export async function spotifyCommand(sock, msg, args) {
     const stat = await fs.stat(tempPath);
 
     const caption = trackMeta
-      ? `🎵 *${trackMeta.name}*\n🎤 ${trackMeta.artist}\n💿 ${trackMeta.album}\n💾 ${formatBytes(stat.size)}`
-      : `🎵 *${video.title}*\n💾 ${formatBytes(stat.size)}`;
+      ? `🎧 *${trackMeta.title}*\n🎤 ${trackMeta.artist}\n💾 ${formatBytes(stat.size)}\n⚡ Powered by *${config.botName}*`
+      : `🎧 *${video.title}*\n💾 ${formatBytes(stat.size)}`;
 
     await sock.sendMessage(jid, {
-      audio:    { url: tempPath },
+      audio: { url: tempPath },
       mimetype: 'audio/mp4',
-      fileName: `${trackMeta?.name || video.title}.mp4`,
-      ptt:      false,
+      fileName: `${trackMeta?.title || video.title}.mp4`,
+      ptt: false,
     });
 
     await sock.sendMessage(jid, { text: caption });

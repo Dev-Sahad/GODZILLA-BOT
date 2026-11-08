@@ -1,5 +1,5 @@
 // commands/ytmusic.js — YouTube Music Download (.ytmusic / .ytmp3)
-import ytdl from 'ytdl-core';
+import ytdl from '../ytdl.js';
 import ytSearch from 'yt-search';
 import fs from 'fs-extra';
 import { getTempPath, cleanupFile, formatDuration, formatBytes } from '../helpers.js';

@@ -1,48 +1,52 @@
-// commands/wallpaper.js — 4K/8K Wallpaper Downloader
-// Uses Wallhaven.cc API (free tier available, no key for SFW)
+// commands/wallpaper.js — 100% Free & Open-Source Wallpaper Downloader
+// Searches high-res 4K/8K and Mobile wallpapers without any API keys
 
 import axios from 'axios';
 import fs from 'fs-extra';
 import { getTempPath, cleanupFile, formatBytes } from '../helpers.js';
 import { config } from '../config.js';
 
-const WALLHAVEN_API = 'https://wallhaven.cc/api/v1';
-
-// Resolution presets
 const RESOLUTIONS = {
   'hd':  '1920x1080',
   'fhd': '1920x1080',
   '2k':  '2560x1440',
   '4k':  '3840x2160',
   '8k':  '7680x4320',
-  // Mobile presets
   'mobile':  '1080x1920',
   'mobile4k': '1440x2560',
 };
 
-const CATEGORY_MAP = {
-  nature:    '100',
-  anime:     '010',
-  general:   '100',
-  dark:      '100',
-  minimal:   '100',
-  car:       '100',
-  city:      '100',
-  space:     '100',
-  abstract:  '100',
-};
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-/**
- * .wall <query> [4k|8k|mobile|2k]
- * .wallmobile <query>
- * .wallpc <query> [4k|8k]
- */
+async function fetchFromRedditWallpapers(query, isMobile) {
+  try {
+    const sub = isMobile ? 'iWallpaper' : 'wallpaper';
+    const res = await axios.get(
+      `https://www.reddit.com/r/${sub}/search.json?q=${encodeURIComponent(query)}&restrict_sr=1&sort=top&limit=25`,
+      { headers: { 'User-Agent': 'GodzillaBot/2.0' }, timeout: 8000 }
+    );
+    const posts = res.data?.data?.children || [];
+    const valid = posts
+      .map(p => p.data)
+      .filter(p => p && p.url && p.url.match(/\.(jpg|jpeg|png)$/i));
+
+    if (valid.length > 0) {
+      const pick = valid[Math.floor(Math.random() * valid.length)];
+      return {
+        url: pick.url,
+        resolution: isMobile ? '1080x1920 (Mobile)' : '4K Ultra HD',
+        source: `r/${sub}`,
+      };
+    }
+  } catch {}
+  return null;
+}
+
 export async function wallpaperCommand(sock, msg, args, type = 'pc') {
   const jid = msg.key.remoteJid;
 
-  // Parse quality from last arg
   let resolution = type === 'mobile' ? '1080x1920' : '1920x1080';
-  const lastArg  = args[args.length - 1]?.toLowerCase();
+  const lastArg = args[args.length - 1]?.toLowerCase();
   if (RESOLUTIONS[lastArg]) {
     resolution = RESOLUTIONS[lastArg];
     args.pop();
@@ -53,57 +57,69 @@ export async function wallpaperCommand(sock, msg, args, type = 'pc') {
   }
 
   const query = args.join(' ').trim() || 'nature';
-
-  if (!query && args.length === 0) {
-    return sock.sendMessage(jid, {
-      text: `❌ *Usage:* ${config.prefix}wall <theme> [quality]\n\n*Examples:*\n${config.prefix}wall nature 4k\n${config.prefix}wall anime mobile\n${config.prefix}wall dark city 8k\n${config.prefix}wallmobile space\n${config.prefix}wallpc minimal 4k\n\n*Qualities:* hd, 2k, 4k, 8k, mobile`,
-    });
-  }
-
-  const ratioParam = type === 'mobile' ? 'portrait' : 'landscape';
-  const isMobile   = type === 'mobile';
+  const isMobile = type === 'mobile';
 
   await sock.sendMessage(jid, {
     text: `🖼️ *Searching ${isMobile ? '📱 Mobile' : '🖥️ PC'} wallpapers…*\nQuery: _${query}_\nResolution: _${resolution}_`,
   });
 
   try {
-    // Build Wallhaven search URL
-    const params = new URLSearchParams({
-      q:          query,
-      categories: '100',        // general, anime, people flags
-      purity:     '100',        // sfw only
-      sorting:    'relevance',
-      order:      'desc',
-      resolutions: resolution,
-    });
+    let imgUrl = null;
+    let resLabel = resolution;
+    let sourceLink = '';
 
-    if (config.wallhaven.apiKey) params.set('apikey', config.wallhaven.apiKey);
+    // 1. Try public Wallhaven search (zero API key needed for SFW)
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        categories: '111',
+        purity: '100',
+        sorting: 'relevance',
+        order: 'desc',
+        resolutions: resolution,
+      });
 
-    const res = await axios.get(`${WALLHAVEN_API}/search?${params}`, { timeout: 10000 });
-    const wallpapers = res.data?.data;
+      const res = await axios.get(`https://wallhaven.cc/api/v1/search?${params}`, {
+        headers: { 'User-Agent': USER_AGENT },
+        timeout: 10000,
+      });
 
-    if (!wallpapers || wallpapers.length === 0) {
-      // Fallback: search without resolution filter
-      params.delete('resolutions');
-      const fallbackRes = await axios.get(`${WALLHAVEN_API}/search?${params}`, { timeout: 10000 });
-      const fallback = fallbackRes.data?.data;
-
-      if (!fallback || fallback.length === 0) {
-        throw new Error(`No wallpapers found for "${query}"`);
+      let list = res.data?.data || [];
+      if (list.length === 0) {
+        params.delete('resolutions');
+        const fallback = await axios.get(`https://wallhaven.cc/api/v1/search?${params}`, {
+          headers: { 'User-Agent': USER_AGENT },
+          timeout: 8000,
+        });
+        list = fallback.data?.data || [];
       }
-      wallpapers.push(...fallback);
+
+      if (list.length > 0) {
+        const pick = list[Math.floor(Math.random() * Math.min(list.length, 10))];
+        imgUrl = pick.path;
+        resLabel = pick.resolution;
+        sourceLink = pick.url;
+      }
+    } catch {}
+
+    // 2. Open-source fallback: Reddit HD Wallpapers
+    if (!imgUrl) {
+      const redditPick = await fetchFromRedditWallpapers(query, isMobile);
+      if (redditPick) {
+        imgUrl = redditPick.url;
+        resLabel = redditPick.resolution;
+        sourceLink = `Reddit ${redditPick.source}`;
+      }
     }
 
-    // Pick a random wallpaper from top 10 results
-    const pick = wallpapers[Math.floor(Math.random() * Math.min(wallpapers.length, 10))];
-    const imgUrl = pick.path;
+    if (!imgUrl) {
+      throw new Error(`No wallpapers found for "${query}". Try another keyword.`);
+    }
 
-    await sock.sendMessage(jid, { text: `⬇️ *Downloading wallpaper…*\n📐 ${pick.resolution}` });
+    await sock.sendMessage(jid, { text: `⬇️ *Downloading wallpaper…*\n📐 Resolution: ${resLabel}` });
 
-    // Download image
     const tempPath = await getTempPath(`wall_${Date.now()}.jpg`);
-    const imgRes   = await axios.get(imgUrl, { responseType: 'stream', timeout: 60000 });
+    const imgRes = await axios.get(imgUrl, { responseType: 'stream', timeout: 45000 });
     const ws = fs.createWriteStream(tempPath);
 
     await new Promise((resolve, reject) => {
@@ -115,9 +131,9 @@ export async function wallpaperCommand(sock, msg, args, type = 'pc') {
     const stat = await fs.stat(tempPath);
 
     await sock.sendMessage(jid, {
-      image:   { url: tempPath },
+      image: { url: tempPath },
       mimetype: 'image/jpeg',
-      caption:  `🖼️ *${query.charAt(0).toUpperCase() + query.slice(1)} Wallpaper*\n${isMobile ? '📱 Mobile' : '🖥️ PC'} | 📐 ${pick.resolution}\n💾 ${formatBytes(stat.size)}\n🔗 ${pick.url}`,
+      caption: `🖼️ *${query.toUpperCase()} WALLPAPER*\n\n📐 Resolution: *${resLabel}*\n📱 Format: *${isMobile ? 'Mobile Portrait' : 'Desktop 4K'}*\n💾 Size: *${formatBytes(stat.size)}*\n${sourceLink ? `🔗 ${sourceLink}` : ''}`,
     });
 
     await cleanupFile(tempPath);
@@ -129,12 +145,10 @@ export async function wallpaperCommand(sock, msg, args, type = 'pc') {
   }
 }
 
-// Separate mobile wallpaper shortcut
 export async function wallMobileCommand(sock, msg, args) {
   return wallpaperCommand(sock, msg, args, 'mobile');
 }
 
-// PC 4K shortcut
 export async function wallPCCommand(sock, msg, args) {
   return wallpaperCommand(sock, msg, args, 'pc4k');
 }

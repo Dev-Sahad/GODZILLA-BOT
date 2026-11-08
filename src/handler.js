@@ -12,13 +12,40 @@ import { socialDlCommand }  from './commands/socialdl.js';
 import { wallpaperCommand, wallMobileCommand, wallPCCommand } from './commands/wallpaper.js';
 import { pingCommand, uptimeCommand, aliveCommand, infoCommand, helpCommand } from './commands/utils.js';
 import { jokeCommand, quoteCommand, memeCommand, lyricsCommand, ytSearchCommand } from './commands/fun.js';
-import { broadcastCommand, restartCommand, modeCommand } from './commands/owner.js';
+import {
+  adminPanelCommand,
+  evalCommand,
+  execCommand,
+  backupCommand,
+  clearTempCommand,
+  setPrefixCommand,
+  setNameCommand,
+  joinCommand,
+  leaveCommand,
+  blockCommand,
+  unblockCommand,
+  broadcastCommand,
+  restartCommand,
+  modeCommand,
+} from './commands/owner.js';
 import { weatherCommand }   from './commands/weather.js';
 import { stickerCommand }   from './commands/sticker.js';
 import { aiCommand, aiClearCommand, aiStatusCommand } from './commands/ai.js';
 import { calcCommand, currencyCommand, translateCommand, ttsCommand } from './commands/tools.js';
 import { kickCommand, promoteCommand, demoteCommand, muteCommand, unmuteCommand, groupInfoCommand, tagAllCommand } from './commands/group.js';
 import { eightBallCommand, diceCommand, coinFlipCommand, rpsCommand, triviaCommand, checkTriviaAnswer } from './commands/games.js';
+import {
+  imagineCommand,
+  wikiCommand,
+  catCommand,
+  dogCommand,
+  animeCommand,
+  factCommand,
+  remindCommand,
+  fancyCommand,
+  githubCommand,
+  passwordCommand,
+} from './commands/extra.js';
 
 // ── Command registry ──────────────────────────────────────────────────────────
 const COMMANDS = {
@@ -63,19 +90,13 @@ const COMMANDS = {
   'menu':      helpCommand,
   'start':     helpCommand,
 
-  // Fun
+  // Fun & Entertainment
   'joke':      jokeCommand,
   'quote':     quoteCommand,
   'meme':      memeCommand,
   'lyrics':    lyricsCommand,
   'ytsearch':  ytSearchCommand,
   'yts':       ytSearchCommand,
-
-  // Owner
-  'broadcast': broadcastCommand,
-  'bc':        broadcastCommand,
-  'restart':   restartCommand,
-  'mode':      modeCommand,
 
   // Weather
   'weather':   weatherCommand,
@@ -86,13 +107,40 @@ const COMMANDS = {
   's':         stickerCommand,
   'stiker':    stickerCommand,
 
-  // AI Chat
+  // AI Chat (Google Gemini)
   'ai':        aiCommand,
   'ask':       aiCommand,
+  'gemini':    aiCommand,
   'chat':      aiCommand,
   'gpt':       aiCommand,
   'aiclear':   aiClearCommand,
   'aistatus':  aiStatusCommand,
+
+  // Creative & Extras
+  'imagine':   imagineCommand,
+  'aiart':     imagineCommand,
+  'draw':      imagineCommand,
+  'dalle':     imagineCommand,
+  'wiki':      wikiCommand,
+  'wikipedia': wikiCommand,
+  'cat':       catCommand,
+  'kitten':    catCommand,
+  'dog':       dogCommand,
+  'puppy':     dogCommand,
+  'anime':     animeCommand,
+  'waifu':     animeCommand,
+  'fact':      factCommand,
+  'facts':     factCommand,
+  'remind':    remindCommand,
+  'reminder':  remindCommand,
+  'fancy':     fancyCommand,
+  'font':      fancyCommand,
+  'style':     fancyCommand,
+  'github':    githubCommand,
+  'gh':        githubCommand,
+  'password':  passwordCommand,
+  'pass':      passwordCommand,
+  'pw':        passwordCommand,
 
   // Tools
   'calc':      calcCommand,
@@ -126,6 +174,29 @@ const COMMANDS = {
   'coinflip':  coinFlipCommand,
   'rps':       rpsCommand,
   'trivia':    triviaCommand,
+
+  // Owner & Admin Panel
+  'admin':     adminPanelCommand,
+  'panel':     adminPanelCommand,
+  'dashboard': adminPanelCommand,
+  'control':   adminPanelCommand,
+  'eval':      evalCommand,
+  'exec':      execCommand,
+  'sh':        execCommand,
+  'terminal':  execCommand,
+  'backup':    backupCommand,
+  'cleartemp': clearTempCommand,
+  'clean':     clearTempCommand,
+  'setprefix': setPrefixCommand,
+  'setname':   setNameCommand,
+  'join':      joinCommand,
+  'leave':     leaveCommand,
+  'block':     blockCommand,
+  'unblock':   unblockCommand,
+  'broadcast': broadcastCommand,
+  'bc':        broadcastCommand,
+  'restart':   restartCommand,
+  'mode':      modeCommand,
 };
 
 // ── Main message handler ──────────────────────────────────────────────────────
@@ -150,6 +221,21 @@ export async function handleMessage(sock, msg) {
 
     // Ignore empty messages
     if (!text) return;
+
+    // Check if message is answering an active trivia session
+    const triviaResult = checkTriviaAnswer(jid, text);
+    if (triviaResult) {
+      if (triviaResult.correct) {
+        await sock.sendMessage(jid, {
+          text: `🎉 *Correct!* Great job!\n✅ Answer: *${triviaResult.answer}*`,
+        }, { quoted: msg });
+      } else {
+        await sock.sendMessage(jid, {
+          text: `❌ *Incorrect!* Better luck next time.\n✅ Correct Answer: *${triviaResult.answer}*`,
+        }, { quoted: msg });
+      }
+      return;
+    }
 
     // Must start with prefix
     if (!text.startsWith(config.prefix)) {

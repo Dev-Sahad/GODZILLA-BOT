@@ -53,7 +53,7 @@ if [ ! -f ".env" ]; then
   if [ -f ".env.example" ]; then
     cp .env.example .env
     echo -e "${YELLOW}⚠️  Please fill in your .env file first, then run this script again.${RESET}"
-    echo -e "${YELLOW}   Open .env and set: OWNER_NUMBER, ANTHROPIC_API_KEY, GODZILLA_SESSION${RESET}"
+    echo -e "${YELLOW}   Open .env and set: OWNER_NUMBER, GEMINI_API_KEY, GODZILLA_SESSION${RESET}"
     exit 1
   else
     echo -e "${RED}❌ .env.example also missing. Something is wrong.${RESET}"

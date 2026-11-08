@@ -3,11 +3,18 @@
 
 import { config } from '../config.js';
 
+function normalizeJid(jid) {
+  if (!jid) return '';
+  const clean = jid.split('@')[0].split(':')[0];
+  return `${clean}@s.whatsapp.net`;
+}
+
 async function isGroupAdmin(sock, jid, participant) {
   try {
     const metadata = await sock.groupMetadata(jid);
+    const target = normalizeJid(participant);
     return metadata.participants.some(
-      p => p.id === participant && (p.admin === 'admin' || p.admin === 'superadmin')
+      p => normalizeJid(p.id) === target && (p.admin === 'admin' || p.admin === 'superadmin')
     );
   } catch { return false; }
 }
@@ -15,9 +22,9 @@ async function isGroupAdmin(sock, jid, participant) {
 async function isBotAdmin(sock, jid) {
   try {
     const metadata = await sock.groupMetadata(jid);
-    const botId = sock.user?.id;
+    const botJid = normalizeJid(sock.user?.id);
     return metadata.participants.some(
-      p => p.id === botId && (p.admin === 'admin' || p.admin === 'superadmin')
+      p => normalizeJid(p.id) === botJid && (p.admin === 'admin' || p.admin === 'superadmin')
     );
   } catch { return false; }
 }
@@ -43,7 +50,7 @@ export async function kickCommand(sock, msg, args) {
   const botAdmin = await isBotAdmin(sock, jid);
   if (!botAdmin) return sock.sendMessage(jid, { text: '❌ Make GODZILLA an admin first.' });
 
-  // Get mentioned user
+  // Get mentioned user or quoted participant
   const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
     || msg.message?.extendedTextMessage?.contextInfo?.participant;
 
@@ -76,8 +83,12 @@ export async function promoteCommand(sock, msg, args) {
   const isAdmin = await requireAdmin(sock, msg, jid, sender);
   if (!isAdmin) return sock.sendMessage(jid, { text: '❌ Admins only.' });
 
-  const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-  if (!mentioned) return sock.sendMessage(jid, { text: `❌ Mention a user: ${config.prefix}promote @user` });
+  const botAdmin = await isBotAdmin(sock, jid);
+  if (!botAdmin) return sock.sendMessage(jid, { text: '❌ Make GODZILLA an admin first.' });
+
+  const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+    || msg.message?.extendedTextMessage?.contextInfo?.participant;
+  if (!mentioned) return sock.sendMessage(jid, { text: `❌ Mention a user or reply to their message: ${config.prefix}promote @user` });
 
   try {
     await sock.groupParticipantsUpdate(jid, [mentioned], 'promote');
@@ -102,8 +113,12 @@ export async function demoteCommand(sock, msg, args) {
   const isAdmin = await requireAdmin(sock, msg, jid, sender);
   if (!isAdmin) return sock.sendMessage(jid, { text: '❌ Admins only.' });
 
-  const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-  if (!mentioned) return sock.sendMessage(jid, { text: `❌ Mention a user: ${config.prefix}demote @user` });
+  const botAdmin = await isBotAdmin(sock, jid);
+  if (!botAdmin) return sock.sendMessage(jid, { text: '❌ Make GODZILLA an admin first.' });
+
+  const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+    || msg.message?.extendedTextMessage?.contextInfo?.participant;
+  if (!mentioned) return sock.sendMessage(jid, { text: `❌ Mention a user or reply to their message: ${config.prefix}demote @user` });
 
   try {
     await sock.groupParticipantsUpdate(jid, [mentioned], 'demote');

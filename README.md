@@ -1,21 +1,26 @@
 # 🤖 GODZILLA by Sxhd
 
-> Multi-feature WhatsApp Bot by Sxhd — built with **Baileys** (Node.js)
+> Multi-feature WhatsApp Bot by Sxhd — built with **Baileys** (Node.js) & **Google Gemini AI**
 
 ---
 
 ## ✨ Features
 
-| Category | Commands |
-|---|---|
-| 🎵 Music | `.ytmusic`, `.spotify` — Download audio |
-| 🎬 Video | `.ytvideo` — YouTube video (360p–1080p) |
-| 📲 Social DL | `.sdl` — Instagram, TikTok, Twitter, FB, Reddit |
-| 🖼️ Wallpapers | `.wall`, `.wallmobile`, `.wallpc` — 4K/8K |
-| 🔍 Search | `.ytsearch`, `.lyrics` |
-| 😂 Fun | `.meme`, `.joke`, `.quote` |
-| 🛠️ Utility | `.ping`, `.alive`, `.uptime`, `.info`, `.help` |
-| 👑 Owner | `.broadcast`, `.restart`, `.mode` |
+| Category | Commands | Description |
+|---|---|---|
+| 🤖 Google AI | `.ai`, `.gemini`, `.aiclear`, `.aistatus` | Powered by **Google Gemini** (multimodal vision + 30-min chat memory) |
+| 🎨 AI Art | `.imagine`, `.aiart` | High-resolution AI Image Generator (Flux / Pollinations) |
+| 🎵 Music | `.ytmusic`, `.spotify` | High-quality audio downloader |
+| 🎬 Video | `.ytvideo` | YouTube video downloader (360p–1080p) |
+| 📲 Social DL | `.sdl` | Instagram Reels, TikTok, Twitter/X, FB, Reddit |
+| 🖼️ Wallpapers | `.wall`, `.wallmobile`, `.wallpc` | 4K & 8K PC & Portrait Mobile Wallpapers |
+| 🛠️ Smart Tools | `.weather`, `.calc`, `.currency`, `.tr`, `.tts`, `.sticker` | Live weather, math, FX rates, translator, voice notes, stickers |
+| 💡 Productivity | `.remind`, `.fancy`, `.password`, `.wiki`, `.github` | Timed reminders, aesthetic fonts, passwords, Wikipedia, GitHub |
+| 🐾 Animals & Art | `.cat`, `.dog`, `.anime`, `.fact` | Cute animals, anime art, random facts of the day |
+| 👥 Group Admin | `.kick`, `.promote`, `.demote`, `.mute`, `.unmute`, `.groupinfo`, `.tagall` | Full group moderation suite |
+| 🎮 Mini Games | `.trivia`, `.8ball`, `.rps`, `.dice`, `.flip` | Interactive trivia, magic 8-ball, RPS, dice roll, coin flip |
+| 🔍 Search & Fun | `.ytsearch`, `.lyrics`, `.meme`, `.joke`, `.quote` | YouTube search, song lyrics, Reddit memes, jokes |
+| 👑 Admin Panel | `.admin`, `.eval`, `.exec`, `.backup`, `.cleartemp`, `.join`, `.leave`, `.block` | **Master Admin Control Panel** with all access & Web Dashboard |
 
 ---
 
@@ -23,7 +28,7 @@
 
 ### 1. Install Node.js 18+
 ```bash
-node --version  # should be >= 18
+node --version  # should be >= 18.0.0
 ```
 
 ### 2. Clone & install dependencies
@@ -40,144 +45,149 @@ nano .env   # Fill in your details
 ```
 
 **Required:**
-- `OWNER_NUMBER` — Your WhatsApp number (e.g. `919876543210`)
+- `OWNER_NUMBER` — Your WhatsApp number with country code (e.g. `919876543210`)
+- `GEMINI_API_KEY` — Your free Google Gemini API Key ([Get it at Google AI Studio](https://aistudio.google.com/app/apikey))
 
-**Optional (enhances features):**
-- `SPOTIFY_CLIENT_ID` + `SPOTIFY_CLIENT_SECRET` — For Spotify metadata
-- `WALLHAVEN_API_KEY` — For wallhaven.cc 4K/8K wallpapers
-- `RAPID_API_KEY` — For additional social media downloaders
+**Optional:**
+- `ADMIN_PASSWORD` — Password for Web Admin Panel (defaults to `godzilla2025`)
+- `GODZILLA_SESSION` — Base64 string for 24/7 cloud hosts (Railway, Render)
+
+*(Note: Spotify, 4K Wallpapers, and Social DL are 100% open-source with **ZERO** external API keys required!)*
 
 ### 4. Run the bot
 ```bash
 npm start
 ```
 
-On first run, a **QR code** appears in the terminal — scan it with WhatsApp (Linked Devices).
+On first run, a **QR code** appears in the terminal — scan it with WhatsApp (*Linked Devices*).
 
 ---
 
 ## 📌 Command Reference
 
-### 🎵 Music
+### 🤖 Google Gemini AI & AI Art
 ```
-.ytmusic <song name or YouTube URL>
-.spotify <Spotify URL or song name>
-```
-
-### 🎬 Video
-```
-.ytvideo <query or URL> [360|480|720|1080]
+.ai <question>               → Chat with Google Gemini AI
+.ai [reply to image]         → Ask Gemini to analyze an image or code
+.imagine <prompt>            → Generate AI images (Flux Engine)
+.aiclear                     → Reset conversation history
+.aistatus                    → Check active memory and remaining TTL
 ```
 
-### 📲 Social Download
+### 🎵 Music & Audio
 ```
-.sdl <Instagram/TikTok/Twitter/Facebook/Reddit URL>
+.ytmusic <song name or URL>  → Download YouTube audio (MP3)
+.spotify <Spotify URL / song>→ Download Spotify track
 ```
-Supports: Instagram Reels, TikTok, Twitter/X, Facebook Videos, Reddit Videos, Pinterest
+
+### 🎬 Video & Social Media
+```
+.ytvideo <query or URL> [360|480|720|1080]  → Download YouTube video
+.sdl <URL>                                  → Download Instagram, TikTok, Twitter/X, FB, Reddit
+```
 
 ### 🖼️ Wallpapers
 ```
-.wall <theme> [hd|2k|4k|8k]     → PC wallpaper
-.wallmobile <theme>              → Portrait (1080x1920)
-.wallpc <theme>                  → PC 4K (3840x2160)
-```
-Theme examples: `nature`, `anime`, `dark`, `minimal`, `space`, `city`, `car`
-
-### 🔍 Search
-```
-.ytsearch <query>       → YouTube search (no download)
-.lyrics <song name>     → Get song lyrics
+.wall <theme> [hd|2k|4k|8k]  → PC wallpaper (e.g. .wall nature 4k)
+.wallmobile <theme>          → Mobile portrait (1080x1920)
+.wallpc <theme>              → PC 4K (3840x2160)
 ```
 
-### 😂 Fun
+### 🛠️ Smart Tools & Productivity
 ```
-.meme     → Random meme from Reddit
-.joke     → Random joke
-.quote    → Inspirational quote
+.remind <minutes> <message>  → Set timed WhatsApp reminder (e.g. .remind 30 Drink water)
+.fancy <text>                → Transform text into aesthetic Unicode fonts
+.password [length]           → Generate cryptographically secure passwords
+.wiki <topic>                → Instant Wikipedia summary & link
+.github <username>           → GitHub profile inspector (bio, repos, followers)
+.weather <city>              → Live weather + 3-day forecast
+.calc <expression>           → Math calculator (e.g. .calc 15% of 3500)
+.currency <amount> <FROM> <TO> → Live currency conversion (e.g. .currency 100 USD INR)
+.tr <lang_code> <text>       → Translate text (e.g. .tr ml Hello)
+.tts <text>                  → Text to speech voice note
+.sticker                     → Convert replied image to WhatsApp sticker
 ```
 
-### 🛠️ Utilities
+### 🐾 Animals & Fun
 ```
-.ping     → Check latency
-.alive    → Bot status check
-.uptime   → How long bot has been running
-.info     → Bot information
-.help     → Full command list
+.cat                         → Random cute cat picture
+.dog                         → Random cute dog picture
+.anime                       → Random high-resolution anime illustration
+.fact                        → Random fascinating fact of the day
+.meme                        → Random meme from Reddit
+.joke                        → Random joke
+.quote                       → Inspirational quote
 ```
 
-### 👑 Owner Commands
+### 👥 Group Admin Commands
 ```
-.broadcast <message>     → Send to all groups
-.restart                 → Restart bot
-.mode <public|private|group>  → Change bot mode
+.kick @user                  → Remove member from group (or reply to user)
+.promote @user               → Promote member to admin (or reply to user)
+.demote @user                → Demote admin to member (or reply to user)
+.mute / .unmute              → Close or open group chat for non-admins
+.tagall [message]            → Mention all group members
+.groupinfo                   → Display group statistics & metadata
+```
+
+### 🎮 Mini Games
+```
+.trivia                      → Trivia quiz (reply with A, B, C, or D)
+.8ball <question>            → Magic 8-Ball answer
+.rps <rock|paper|scissors>   → Play Rock Paper Scissors
+.dice [sides]                → Roll a dice (default d6)
+.flip                        → Flip a coin (Heads or Tails)
+```
+
+### 👑 Master Admin Panel (All-Access Owner Commands)
+```
+.admin                       → Interactive Control Center & Live Hardware Metrics
+.eval <javascript_code>      → Execute dynamic JavaScript with full runtime access
+.exec <terminal_command>     → Run shell & terminal commands directly in WhatsApp
+.backup                      → Export session backup string directly to WhatsApp
+.cleartemp                   → Wipe temporary cache & report freed disk space
+.setprefix <prefix>          → Change command prefix dynamically
+.setname <bot_name>          → Rename the bot on the fly
+.join <group_invite_link>    → Make the bot join a WhatsApp group via link
+.leave                       → Make the bot exit the current group
+.block @user / .unblock @user→ Block or unblock WhatsApp contacts
+.broadcast <message>         → Broadcast announcements to all participating groups
+.restart                     → Reboot the bot process safely
+.mode <public|private|group> → Toggle bot access permissions
 ```
 
 ---
 
-## 🏠 Hosting
+## 🌐 Web Admin Dashboard
 
-### Option 1: Render.com (Free)
-1. Push code to GitHub
-2. Create a new **Web Service** on Render
-3. Set build command: `npm install`
-4. Set start command: `npm start`
-5. Add all `.env` variables in the Render dashboard
+When deployed to cloud hosts (Render, Railway, VPS) with a `PORT` configured:
+* Visit `http://<your-host-or-domain>:<port>/` or `/admin` in any browser.
+* Features a modern, dark-mode real-time status dashboard displaying:
+  - 🟢 Live connection status & Uptime
+  - 🧠 Memory heap usage, RSS, and OS RAM
+  - ⚡ CPU architecture & thread counts
+  - 📊 JSON API at `/api/stats`
 
-### Option 2: VPS / Local
+---
+
+## 🏠 Hosting 24/7
+
+### Option 1: Railway.app (Recommended)
 ```bash
-# Install PM2 for auto-restart
-npm install -g pm2
-pm2 start index.js --name godzilla-bot
-pm2 save
-pm2 startup
+# 1. Run locally, scan QR code, export session:
+npm run session
+
+# 2. Add GODZILLA_SESSION=<exported_string> to .env
+
+# 3. Deploy automatically:
+bash deploy.sh
 ```
 
----
-
-## 📂 Project Structure
-
-```
-godzilla-bot/
-├── index.js              # Entry point & WhatsApp connection
-├── src/
-│   ├── config.js         # Bot configuration
-│   ├── handler.js        # Command router
-│   ├── helpers.js        # Shared utilities
-│   ├── logger.js         # Pretty logger
-│   └── commands/
-│       ├── ytmusic.js    # YouTube audio download
-│       ├── ytvideo.js    # YouTube video download
-│       ├── spotify.js    # Spotify downloader
-│       ├── socialdl.js   # Social media video downloader
-│       ├── wallpaper.js  # Wallpaper downloader
-│       ├── utils.js      # Utility commands
-│       ├── fun.js        # Fun commands
-│       └── owner.js      # Owner-only commands
-├── sessions/             # WhatsApp session data (auto-created)
-├── temp/                 # Temp media files (auto-cleaned)
-├── .env.example
-└── package.json
-```
+### Option 2: Render.com
+1. Create a new **Web Service** on Render.
+2. Build command: `npm install`
+3. Start command: `npm start`
+4. Add environment variables: `OWNER_NUMBER`, `GEMINI_API_KEY`, `GODZILLA_SESSION`.
 
 ---
 
-## ⚡ Adding New Commands
-
-1. Create `src/commands/mycommand.js`
-2. Export a function: `export async function myCommand(sock, msg, args) { ... }`
-3. Register it in `src/handler.js` under `COMMANDS`
-
----
-
-## 🔧 Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| QR not showing | Make sure terminal supports Unicode |
-| Session expired | Delete `sessions/` folder and restart |
-| Download fails | Check internet connection; URL may be private |
-| Bot not responding | Check `.env` prefix matches what you type |
-
----
-
-*Built by Sxhd • Powered by Baileys*
+*Built by Sxhd • Powered by Baileys & Google Gemini AI*

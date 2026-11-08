@@ -8,17 +8,11 @@ export const config = {
   ownerNumber: (process.env.OWNER_NUMBER || '918147120709') + '@s.whatsapp.net',
   mode:       process.env.BOT_MODE    || 'public',   // public | private | group
   cooldown:   parseInt(process.env.COOLDOWN_SECONDS || '5'),
+  adminPassword: process.env.ADMIN_PASSWORD || 'godzilla2025',
 
-  // ── API Keys ──────────────────────────────────────────
-  spotify: {
-    clientId:     process.env.SPOTIFY_CLIENT_ID     || '',
-    clientSecret: process.env.SPOTIFY_CLIENT_SECRET || '',
-  },
-  wallhaven: {
-    apiKey: process.env.WALLHAVEN_API_KEY || '',
-  },
-  rapidApi: {
-    key: process.env.RAPID_API_KEY || '',
+  // ── AI Keys ───────────────────────────────────────────
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
   },
 
   // ── Paths ─────────────────────────────────────────────

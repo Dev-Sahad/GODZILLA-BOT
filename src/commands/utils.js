@@ -85,7 +85,7 @@ export async function infoCommand(sock, msg) {
 💬 *Commands*    : 50+
 🔧 *Engine*      : Baileys
 💻 *Runtime*     : Node.js v24
-🧠 *AI Model*    : Claude Haiku
+🧠 *AI Model*    : Google Gemini Flash
 🌐 *Platform*    : WhatsApp Web
 📡 *Connection*  : WebSocket
 
@@ -97,6 +97,8 @@ export async function infoCommand(sock, msg) {
 🟢 *Mode*        : ${config.mode}
 
 ━━━━━━ 🎯 *FEATURES* ━━━━━━━
+✅ Google Gemini Multimodal AI
+✅ AI Image Generation (.imagine)
 ✅ YouTube Music Downloader
 ✅ YouTube Video (360p–1080p)
 ✅ Spotify Track Downloader
@@ -105,28 +107,22 @@ export async function infoCommand(sock, msg) {
 ✅ Twitter/X Video Downloader
 ✅ Facebook Video Downloader
 ✅ Reddit Video Downloader
-✅ 4K & 8K PC Wallpapers
-✅ Mobile Portrait Wallpapers
-✅ AI Chat with Memory
-✅ AI Image Understanding
-✅ Live Weather + 3 Day Forecast
+✅ 4K & 8K PC & Mobile Wallpapers
+✅ Live Weather & Forecast
 ✅ Image to Sticker Converter
-✅ Video to Animated Sticker
 ✅ Currency Converter (Live Rates)
 ✅ Multi-language Translator
 ✅ Text to Speech (Voice Note)
-✅ Math Calculator
-✅ Song Lyrics Finder
-✅ YouTube Search
-✅ Group Kick/Promote/Demote
-✅ Group Mute/Unmute
-✅ Tag All Members
-✅ Trivia Quiz Game
-✅ Magic 8-Ball
-✅ Rock Paper Scissors
-✅ Dice Roll & Coin Flip
-✅ Random Memes from Reddit
-✅ Jokes & Quotes
+✅ Math Calculator & Wikipedia
+✅ Scheduled Reminders (.remind)
+✅ Fancy Font Generator (.fancy)
+✅ GitHub Profile Inspector (.github)
+✅ Group Admin Moderation Suite
+✅ Master Admin Control Panel (.admin)
+✅ Dynamic JS Eval & Shell Exec
+✅ Direct WhatsApp Session Backup
+✅ Trivia, 8-Ball, RPS & Mini Games
+✅ Random Memes, Jokes & Facts
 ✅ Broadcast to All Groups
 ✅ Auto Reconnect 24/7
 
@@ -208,54 +204,68 @@ export async function helpCommand(sock, msg, args) {
 ║  🦖 *GODZILLA by Sxhd*  ║
 ╚═══════════════════════╝
 
+━━━━━━━━ 🤖 *AI & ART* ━━━━━━━━
+▸ ${p}ai <question/prompt>  _(Google Gemini)_
+▸ ${p}imagine <prompt>  _(Flux AI Art Generator)_
+▸ ${p}aiclear  _(reset AI history)_
+▸ ${p}aistatus  _(check AI memory)_
+
 ━━━━━━━━ 🎵 *MUSIC* ━━━━━━━━
 ▸ ${p}ytmusic <query/URL>
 ▸ ${p}spotify <URL/song name>
 
-━━━━━━ 🎬 *VIDEO* ━━━━━━━
+━━━━━━ 🎬 *VIDEO & DL* ━━━━━━━
 ▸ ${p}ytvideo <query> [360|720|1080]
 ▸ ${p}sdl <URL>  _(IG/TT/Twitter/FB/Reddit)_
 
-━━━━━ 🖼️ *WALLPAPER* ━━━━━━
+━━━━━ 🖼️ *WALLPAPERS* ━━━━━━
 ▸ ${p}wall <theme> [hd|2k|4k|8k]
 ▸ ${p}wallmobile <theme>
 ▸ ${p}wallpc <theme>
 
-━━━━━━ 🤖 *AI CHAT* ━━━━━━━
-▸ ${p}ai <message>
-▸ ${p}aiclear  _(reset history)_
-
-━━━━━━ 🛠️ *TOOLS* ━━━━━━━━
+━━━━━━ 🛠️ *TOOLS & UTILITY* ━━━
 ▸ ${p}weather <city>
 ▸ ${p}calc <expression>
 ▸ ${p}currency <amt> <FROM> <TO>
 ▸ ${p}tr <lang_code> <text>
-▸ ${p}tts <text>
+▸ ${p}tts <text>  _(Voice Note)_
 ▸ ${p}sticker  _(reply to image)_
+▸ ${p}remind <mins> <message>
+▸ ${p}fancy <text>  _(Fonts)_
+▸ ${p}password [length]
+▸ ${p}wiki <topic>
+▸ ${p}github <user>
 ▸ ${p}lyrics <song>
 ▸ ${p}ytsearch <query>
 
-━━━━━━ 🎮 *GAMES* ━━━━━━━━
-▸ ${p}trivia
+━━━━━━ 🎮 *GAMES & FUN* ━━━━━━
+▸ ${p}trivia  _(interactive quiz)_
 ▸ ${p}8ball <question>
 ▸ ${p}rps <rock|paper|scissors>
-▸ ${p}dice [sides]
-▸ ${p}flip
+▸ ${p}dice [sides]  ▸ ${p}flip
+▸ ${p}cat  ▸ ${p}dog  ▸ ${p}anime
+▸ ${p}fact  ▸ ${p}meme  ▸ ${p}joke  ▸ ${p}quote
 
 ━━━━━ 👥 *GROUP ADMIN* ━━━━━
-▸ ${p}kick @user
+▸ ${p}kick @user  _(or reply)_
 ▸ ${p}promote / ${p}demote @user
 ▸ ${p}mute / ${p}unmute
 ▸ ${p}tagall <message>
 ▸ ${p}groupinfo
 
-━━━━━━ 😂 *FUN* ━━━━━━━━━
-▸ ${p}meme  ▸ ${p}joke  ▸ ${p}quote
-
-━━━━━━ ⚙️ *UTILITY* ━━━━━━━
+━━━━━━ ⚙️ *SYSTEM* ━━━━━━━━━
 ▸ ${p}ping  ▸ ${p}alive  ▸ ${p}uptime  ▸ ${p}info
 
-━━━━━ 👑 *OWNER ONLY* ━━━━━
+━━━━━ 👑 *MASTER ADMIN PANEL* ━
+▸ ${p}admin  _(Master Control Center)_
+▸ ${p}eval <code>  _(dynamic JS)_
+▸ ${p}exec <cmd>  _(shell command)_
+▸ ${p}backup  _(session export)_
+▸ ${p}cleartemp  _(cache cleanup)_
+▸ ${p}setprefix <prefix>
+▸ ${p}setname <name>
+▸ ${p}join <link>  ▸ ${p}leave
+▸ ${p}block / ${p}unblock @user
 ▸ ${p}broadcast <msg>
 ▸ ${p}restart  ▸ ${p}mode <public|private|group>
 

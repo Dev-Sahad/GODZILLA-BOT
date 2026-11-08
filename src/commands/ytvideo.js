@@ -1,5 +1,5 @@
 // commands/ytvideo.js — YouTube Video Download (.ytvideo / .ytmp4)
-import ytdl from 'ytdl-core';
+import ytdl from '../ytdl.js';
 import ytSearch from 'yt-search';
 import fs from 'fs-extra';
 import { getTempPath, cleanupFile, formatDuration, formatBytes } from '../helpers.js';

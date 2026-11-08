@@ -18,6 +18,22 @@ import { config }        from './src/config.js';
 import { logger }        from './src/logger.js';
 import { handleMessage } from './src/handler.js';
 import { restoreSession } from './src/session.js';
+import http              from 'http';
+import { handleDashboardRequest } from './src/dashboard.js';
+
+let currentSock = null;
+
+// ── Web Service Health & Admin Dashboard Server (Render / Railway / Cloud) ────
+const PORT = process.env.PORT;
+if (PORT) {
+  const server = http.createServer((req, res) => {
+    handleDashboardRequest(req, res, () => currentSock);
+  });
+
+  server.listen(PORT, () => {
+    logger.info(`🌐 Web Admin Dashboard active on port ${PORT}`);
+  });
+}
 
 // ── Ensure required directories exist ────────────────────────────────────────
 await fs.ensureDir(config.sessionsDir);
@@ -43,6 +59,8 @@ async function connectBot() {
     markOnlineOnConnect: true,
     generateHighQualityLinkPreview: true,
   });
+
+  currentSock = sock;
 
   // ── QR Code ───────────────────────────────────────────────────────────────
   sock.ev.on('connection.update', async (update) => {

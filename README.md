@@ -159,34 +159,36 @@ On first run, a **QR code** appears in the terminal — scan it with WhatsApp (*
 
 ## 🌐 Web Admin Dashboard
 
-When deployed to cloud hosts (Render, Railway, VPS) with a `PORT` configured:
-* Visit `http://<your-host-or-domain>:<port>/` or `/admin` in any browser.
-* Features a modern, dark-mode real-time status dashboard displaying:
-  - 🟢 Live connection status & Uptime
-  - 🧠 Memory heap usage, RSS, and OS RAM
-  - ⚡ CPU architecture & thread counts
-  - 📊 JSON API at `/api/stats`
+When running locally or on cloud hosts (Render, Railway, VPS) with a `PORT` configured:
+* Visit `http://<your-host-or-domain>:<port>/admin` in any browser.
+* **📱 In-Browser Live QR Scanner**: Scan WhatsApp pairing QR directly from the web page without needing terminal access.
+* **🔐 24/7 Permanent Session Manager**: 1-click copy your `GODZILLA_SESSION` string so the bot never asks to log in again.
+* **👥 Groups Manager**: View all joined WhatsApp groups, member counts, and leave groups with 1 click.
+* **📢 Web Broadcast & Chat**: Dispatch group announcements or send WhatsApp messages directly from the browser.
+* **⚡ Interactive Web Shell & Eval**: Execute terminal commands and dynamic JavaScript directly inside the web UI.
+* **📊 Real-time Hardware Meters**: CPU, RAM progress bars, and live console logs viewer.
+* **🔒 Password Protected**: Secured with `ADMIN_PASSWORD` (default: `GodZilla`).
 
 ---
 
-## 🏠 Hosting 24/7
+## 🏠 Running 24/7 on Render (Without Keeping PC On)
 
-### Option 1: Railway.app (Recommended)
-```bash
-# 1. Run locally, scan QR code, export session:
-npm run session
+Render Free Tier shuts down containers after 15 minutes of inactivity. GODZILLA solves this permanently:
 
-# 2. Add GODZILLA_SESSION=<exported_string> to .env
+### 1. 24/7 Keep-Alive Heartbeat
+GODZILLA automatically detects `RENDER_EXTERNAL_URL` and **pings itself every 8 minutes**, preventing Render from ever sleeping even when your PC is turned off.
 
-# 3. Deploy automatically:
-bash deploy.sh
-```
-
-### Option 2: Render.com
-1. Create a new **Web Service** on Render.
-2. Build command: `npm install`
-3. Start command: `npm start`
-4. Add environment variables: `OWNER_NUMBER`, `GEMINI_API_KEY`, `GODZILLA_SESSION`.
+### 2. Never Login Again (Permanent Session)
+1. Deploy to Render as a **Web Service**.
+2. Open `https://<your-app>.onrender.com/admin` on your phone or PC.
+3. Enter your password (`GodZilla`) and scan the QR code displayed on the screen.
+4. As soon as connected, the bot will:
+   - Send your permanent session string directly to your WhatsApp DM.
+   - Display it in the **24/7 Session & QR** tab on the dashboard.
+5. In your Render Dashboard, go to **Environment Variables** and add:
+   - Key: `GODZILLA_SESSION`
+   - Value: `<your_copied_session_string>`
+6. **Done!** Even if Render redeploys or restarts, it will restore your session automatically from the variable and **never ask to scan QR code again**. You can safely turn off your PC!
 
 ---
 

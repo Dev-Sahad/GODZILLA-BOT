@@ -1,15 +1,28 @@
-// src/dashboard.js — Interactive Web Admin Panel (HTML, CSS & JavaScript)
-// Full control over GODZILLA bot from any web browser
+// src/dashboard.js — Advanced Web Admin Panel (HTML, CSS & JavaScript)
+// Full 24/7 Control Center for GODZILLA Bot with In-Browser QR Scanner & Session Manager
 
 import os from 'os';
 import fs from 'fs-extra';
 import path from 'path';
+import { exec } from 'child_process';
+import util from 'util';
 import { config } from './config.js';
 import { formatBytes } from './helpers.js';
 import { logger } from './logger.js';
+import { getSessionBase64 } from './session.js';
+
+let latestQrDataUrl = null;
+
+export function setLatestQr(qrDataUrl) {
+  latestQrDataUrl = qrDataUrl;
+}
+
+export function clearLatestQr() {
+  latestQrDataUrl = null;
+}
 
 /**
- * Gather live system and bot metrics
+ * Gather real-time system, network, and WhatsApp metrics
  */
 export async function getSystemStats(sock) {
   const mem = process.memoryUsage();
@@ -22,18 +35,27 @@ export async function getSystemStats(sock) {
   const mins = Math.floor((uptimeSec % 3600) / 60);
   const secs = uptimeSec % 60;
 
-  let groupCount = 0;
+  let groupList = [];
   let isConnected = false;
+
   if (sock) {
     try {
-      isConnected = sock.ws?.isOpen || Boolean(sock.user?.id);
+      isConnected = Boolean(sock.user?.id) || sock.ws?.isOpen;
       const chats = await sock.groupFetchAllParticipating();
-      groupCount = Object.keys(chats).length;
+      groupList = Object.entries(chats).map(([jid, data]) => ({
+        jid,
+        subject: data.subject || 'Unnamed Group',
+        members: data.participants?.length || 0,
+        creation: data.creation ? new Date(data.creation * 1000).toLocaleDateString() : 'N/A',
+      }));
     } catch {}
   }
 
   const heapPercent = Math.min(100, Math.round((mem.heapUsed / mem.heapTotal) * 100));
   const ramPercent = Math.min(100, Math.round(((totalMem - freeMem) / totalMem) * 100));
+  const sessionString = await getSessionBase64();
+
+  const externalUrl = process.env.RENDER_EXTERNAL_URL || process.env.APP_URL || null;
 
   return {
     botName: config.botName,
@@ -41,6 +63,11 @@ export async function getSystemStats(sock) {
     mode: config.mode,
     owner: config.ownerNumber,
     isConnected,
+    hasSession: Boolean(sessionString),
+    sessionString: sessionString || '',
+    qrCode: latestQrDataUrl,
+    externalUrl,
+    keepAliveActive: Boolean(externalUrl),
     uptime: `${days}d ${hours}h ${mins}m ${secs}s`,
     uptimeSeconds: uptimeSec,
     heapUsed: formatBytes(mem.heapUsed),
@@ -54,7 +81,8 @@ export async function getSystemStats(sock) {
     cores: os.cpus().length,
     platform: `${os.platform()} ${os.arch()}`,
     nodeVersion: process.version,
-    groups: groupCount,
+    groups: groupList,
+    groupCount: groupList.length,
     timestamp: new Date().toISOString(),
   };
 }
@@ -68,16 +96,16 @@ export async function getRecentLogs() {
     if (await fs.pathExists(logFile)) {
       const content = await fs.readFile(logFile, 'utf-8');
       const lines = content.trim().split('\n');
-      return lines.slice(-100).join('\n');
+      return lines.slice(-120).join('\n');
     }
-    return '[GODZILLA] Log file initializing...';
+    return '[GODZILLA] Logger initialized. Waiting for incoming events...';
   } catch (err) {
-    return `[GODZILLA] Unable to read log file: ${err.message}`;
+    return `[GODZILLA] Log stream unavailable: ${err.message}`;
   }
 }
 
 /**
- * Render the full-featured HTML & CSS & JS Web Admin Dashboard
+ * Render complete responsive HTML5 & CSS3 Web Admin Panel
  */
 export function renderWebDashboard() {
   return `<!DOCTYPE html>
@@ -87,19 +115,19 @@ export function renderWebDashboard() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🦖 GODZILLA — Web Admin Control Panel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0b0f19;
-      --card: rgba(23, 31, 48, 0.75);
-      --card-hover: rgba(30, 41, 63, 0.85);
+      --bg: #07090e;
+      --card: rgba(18, 24, 38, 0.78);
+      --card-hover: rgba(26, 35, 54, 0.9);
       --border: rgba(255, 255, 255, 0.08);
       --primary: #10b981;
-      --primary-glow: rgba(16, 185, 129, 0.25);
       --accent: #6366f1;
       --danger: #ef4444;
       --warning: #f59e0b;
-      --text: #f9fafb;
+      --info: #0ea5e9;
+      --text: #f8fafc;
       --text-muted: #94a3b8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -108,26 +136,28 @@ export function renderWebDashboard() {
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 2rem 1.5rem;
+      padding: 1.5rem 1rem;
       background-image: 
-        radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-        radial-gradient(circle at 90% 90%, rgba(16, 185, 129, 0.12) 0%, transparent 40%);
+        radial-gradient(circle at 12% 15%, rgba(99, 102, 241, 0.16) 0%, transparent 45%),
+        radial-gradient(circle at 88% 85%, rgba(16, 185, 129, 0.12) 0%, transparent 45%);
     }
-    .container { max-width: 1180px; margin: 0 auto; }
+    .container { max-width: 1240px; margin: 0 auto; }
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.8rem;
       padding-bottom: 1.25rem;
       border-bottom: 1px solid var(--border);
     }
     .brand { display: flex; align-items: center; gap: 0.85rem; }
-    .brand h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.5px; }
+    .brand h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.5px; }
     .badge {
       background: rgba(16, 185, 129, 0.15);
       color: var(--primary);
-      padding: 0.35rem 0.85rem;
+      padding: 0.4rem 0.85rem;
       border-radius: 9999px;
       font-size: 0.8rem;
       font-weight: 700;
@@ -145,49 +175,72 @@ export function renderWebDashboard() {
       width: 8px; height: 8px; border-radius: 50%;
       background: currentColor; box-shadow: 0 0 10px currentColor;
     }
-    .auth-bar { display: flex; align-items: center; gap: 0.6rem; }
-    .auth-input {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border);
-      color: #fff;
-      padding: 0.45rem 0.85rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      outline: none;
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+      overflow-x: auto;
     }
-    .auth-input:focus { border-color: var(--accent); }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 0.55rem 1.1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+    .tab-btn.active {
+      color: #fff;
+      background: var(--card);
+      border-color: var(--border);
+      border-bottom-color: var(--primary);
+    }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
     }
     .card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 1.25rem;
-      padding: 1.5rem;
+      border-radius: 1.1rem;
+      padding: 1.4rem;
       backdrop-filter: blur(14px);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
     }
     .card-title {
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: var(--text-muted);
-      margin-bottom: 1.2rem;
+      margin-bottom: 1rem;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 0.5rem;
     }
     .stat-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0.65rem 0;
+      padding: 0.6rem 0;
       border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      font-size: 0.95rem;
+      font-size: 0.92rem;
     }
     .stat-row:last-child { border-bottom: none; }
     .stat-label { color: var(--text-muted); }
@@ -197,11 +250,9 @@ export function renderWebDashboard() {
       color: #fff;
     }
     .progress-bar-container {
-      width: 100%;
-      height: 7px;
+      width: 100%; height: 7px;
       background: rgba(255, 255, 255, 0.08);
-      border-radius: 4px;
-      margin-top: 0.4rem;
+      border-radius: 4px; margin-top: 0.4rem;
       overflow: hidden;
     }
     .progress-bar {
@@ -210,79 +261,90 @@ export function renderWebDashboard() {
       border-radius: 4px;
       transition: width 0.4s ease;
     }
-    .tag {
-      background: rgba(255, 255, 255, 0.08);
-      padding: 0.2rem 0.55rem;
-      border-radius: 6px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-    }
     .btn {
       background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0.55rem 1rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.85rem;
+      color: #fff; border: none;
+      padding: 0.55rem 1rem; border-radius: 8px;
+      font-weight: 600; font-size: 0.85rem;
+      cursor: pointer; display: inline-flex;
+      align-items: center; gap: 0.4rem;
       transition: all 0.2s ease;
     }
     .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-danger { background: var(--danger); }
     .btn-success { background: var(--primary); }
+    .btn-danger { background: var(--danger); }
     .btn-warning { background: var(--warning); color: #000; }
+    .btn-secondary { background: rgba(255, 255, 255, 0.1); color: #fff; }
     .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
     .form-group { margin-top: 1rem; }
     .form-group label {
-      display: block;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-bottom: 0.4rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      display: block; font-size: 0.78rem; font-weight: 700;
+      color: var(--text-muted); margin-bottom: 0.35rem;
+      text-transform: uppercase; letter-spacing: 0.5px;
     }
     .form-control {
       width: 100%;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border);
-      color: #fff;
-      padding: 0.65rem 0.85rem;
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 0.9rem;
-      outline: none;
-      transition: border 0.2s;
+      color: #fff; padding: 0.65rem 0.85rem;
+      border-radius: 8px; font-family: inherit; font-size: 0.9rem;
+      outline: none; transition: border 0.2s;
     }
     .form-control:focus { border-color: var(--accent); }
-    textarea.form-control { resize: vertical; min-height: 80px; }
+    textarea.form-control { resize: vertical; min-height: 85px; }
     .terminal {
-      background: #05070d;
+      background: #04060b;
       border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 1.25rem;
+      border-radius: 0.85rem;
+      padding: 1rem;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.82rem;
       color: #38bdf8;
-      height: 280px;
+      height: 270px;
       overflow-y: auto;
       white-space: pre-wrap;
       word-break: break-all;
-      line-height: 1.6;
+      line-height: 1.55;
+    }
+    .qr-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed var(--border);
+      border-radius: 1rem;
+      text-align: center;
+    }
+    .qr-img {
+      max-width: 250px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      margin-bottom: 0.75rem;
+    }
+    .session-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      background: #04060b;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      height: 90px;
+      overflow-y: auto;
+      word-break: break-all;
+      color: #a78bfa;
+      margin-bottom: 0.75rem;
     }
     .alert {
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      margin-bottom: 1.5rem;
-      display: none;
+      padding: 0.75rem 1rem; border-radius: 8px;
+      font-size: 0.85rem; margin-bottom: 1.25rem; display: none;
     }
     .alert-success { background: rgba(16, 185, 129, 0.15); color: var(--primary); border: 1px solid var(--primary); }
     .alert-error { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+    .table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .table th, .table td { padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .table th { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; }
   </style>
 </head>
 <body>
@@ -295,131 +357,264 @@ export function renderWebDashboard() {
           <span id="statusText">CONNECTING...</span>
         </div>
       </div>
-      <div class="auth-bar">
-        <input type="password" id="adminKey" class="auth-input" placeholder="Admin Password" />
-        <button class="btn" onclick="saveKey()">Set Key</button>
+      <div style="display: flex; gap: 0.6rem; align-items: center;">
+        <input type="password" id="adminKey" class="form-control" placeholder="Admin Password" style="max-width: 170px; padding: 0.45rem 0.75rem; font-size: 0.85rem;" />
+        <button class="btn btn-secondary" onclick="saveKey()">Set Key</button>
       </div>
     </header>
 
     <div id="actionAlert" class="alert"></div>
 
-    <div class="grid">
-      <!-- System Vitals Card -->
-      <div class="card">
-        <div class="card-title">📊 System & Bot Vitals</div>
-        <div class="stat-row">
-          <span class="stat-label">Bot Identity</span>
-          <span class="stat-value" id="valBotName">...</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Command Prefix</span>
-          <span class="stat-value"><span class="tag" id="valPrefix">.</span></span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Current Mode</span>
-          <span class="stat-value" id="valMode" style="color: #38bdf8;">...</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Groups Active</span>
-          <span class="stat-value" id="valGroups">0</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Live Uptime</span>
-          <span class="stat-value" id="valUptime" style="color: #34d399;">...</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">AI Engine</span>
-          <span class="stat-value" style="color: #a78bfa;">Google Gemini AI</span>
-        </div>
-      </div>
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-dashboard')">📊 Dashboard & Vitals</button>
+      <button class="tab-btn" onclick="switchTab('tab-session')">🔐 24/7 Session & QR</button>
+      <button class="tab-btn" onclick="switchTab('tab-groups')">👥 Groups Manager</button>
+      <button class="tab-btn" onclick="switchTab('tab-broadcast')">📢 Broadcast & Chat</button>
+      <button class="tab-btn" onclick="switchTab('tab-terminal')">💻 Terminal & Shell</button>
+      <button class="tab-btn" onclick="switchTab('tab-settings')">⚙️ Settings</button>
+    </div>
 
-      <!-- Resources & Hardware Card -->
-      <div class="card">
-        <div class="card-title">🧠 Memory & Resources</div>
-        <div class="stat-row">
-          <span class="stat-label">Heap Memory</span>
-          <span class="stat-value" id="valHeap">...</span>
-        </div>
-        <div class="progress-bar-container">
-          <div id="heapBar" class="progress-bar" style="width: 0%"></div>
-        </div>
-
-        <div class="stat-row" style="margin-top: 0.6rem;">
-          <span class="stat-label">System RAM</span>
-          <span class="stat-value" id="valRam">...</span>
-        </div>
-        <div class="progress-bar-container">
-          <div id="ramBar" class="progress-bar" style="width: 0%"></div>
-        </div>
-
-        <div class="stat-row" style="margin-top: 0.6rem;">
-          <span class="stat-label">Node Runtime</span>
-          <span class="stat-value" id="valNode">...</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Platform</span>
-          <span class="stat-value" id="valPlatform">...</span>
-        </div>
-      </div>
-
-      <!-- Quick Actions Card -->
-      <div class="card">
-        <div class="card-title">⚡ Master Controls</div>
-        
-        <div class="form-group" style="margin-top: 0;">
-          <label>Change Bot Access Mode</label>
-          <div class="btn-group">
-            <button class="btn btn-success" onclick="triggerAction('setMode', { mode: 'public' })">Public</button>
-            <button class="btn btn-warning" onclick="triggerAction('setMode', { mode: 'private' })">Private</button>
-            <button class="btn" onclick="triggerAction('setMode', { mode: 'group' })">Group Only</button>
+    <!-- TAB 1: DASHBOARD -->
+    <div id="tab-dashboard" class="tab-pane active">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">🤖 Bot Information</div>
+          <div class="stat-row">
+            <span class="stat-label">Bot Identity</span>
+            <span class="stat-value" id="valBotName">...</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Command Prefix</span>
+            <span class="stat-value"><span id="valPrefix" style="background: rgba(255,255,255,0.08); padding: 0.2rem 0.5rem; border-radius: 6px;">.</span></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Active Mode</span>
+            <span class="stat-value" id="valMode" style="color: #38bdf8;">...</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Participating Groups</span>
+            <span class="stat-value" id="valGroupCount">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Continuous Uptime</span>
+            <span class="stat-value" id="valUptime" style="color: #34d399;">...</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">AI Engine</span>
+            <span class="stat-value" style="color: #a78bfa;">Google Gemini AI</span>
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Maintenance Operations</label>
-          <div class="btn-group">
-            <button class="btn btn-warning" onclick="triggerAction('clearTemp')">🧹 Clear Temp Media</button>
-            <button class="btn btn-danger" onclick="if(confirm('Reboot GODZILLA bot process now?')) triggerAction('restart')">🔄 Reboot Bot</button>
+        <div class="card">
+          <div class="card-title">🧠 Memory & Resources</div>
+          <div class="stat-row">
+            <span class="stat-label">Heap Memory</span>
+            <span class="stat-value" id="valHeap">...</span>
+          </div>
+          <div class="progress-bar-container">
+            <div id="heapBar" class="progress-bar" style="width: 0%"></div>
+          </div>
+
+          <div class="stat-row" style="margin-top: 0.6rem;">
+            <span class="stat-label">System RAM</span>
+            <span class="stat-value" id="valRam">...</span>
+          </div>
+          <div class="progress-bar-container">
+            <div id="ramBar" class="progress-bar" style="width: 0%"></div>
+          </div>
+
+          <div class="stat-row" style="margin-top: 0.6rem;">
+            <span class="stat-label">Node Runtime</span>
+            <span class="stat-value" id="valNode">...</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Host OS</span>
+            <span class="stat-value" id="valPlatform">...</span>
           </div>
         </div>
 
+        <div class="card">
+          <div class="card-title">⏰ 24/7 Keep-Alive Engine</div>
+          <div class="stat-row">
+            <span class="stat-label">Self-Pinger Status</span>
+            <span class="stat-value" id="valKeepAliveStatus" style="color: #34d399;">ACTIVE (Every 8m)</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Detected URL</span>
+            <span class="stat-value" id="valExternalUrl" style="font-size: 0.78rem;">Local / Host</span>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem; line-height: 1.5;">
+            Render free instances sleep after 15m. GODZILLA's built-in Keep-Alive engine continuously pings itself so your bot stays online 24/7 without shutting down.
+          </p>
+          <div class="btn-group" style="margin-top: 0.75rem;">
+            <button class="btn btn-secondary" onclick="triggerAction('clearTemp')">🧹 Wipe Temp Media</button>
+            <button class="btn btn-danger" onclick="if(confirm('Reboot GODZILLA now?')) triggerAction('restart')">🔄 Reboot Bot</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>📜 Live Activity Log</span>
+          <span style="font-size: 0.75rem; color: #34d399;">● Auto-updating</span>
+        </div>
+        <div id="terminalLog" class="terminal">Loading log stream...</div>
+      </div>
+    </div>
+
+    <!-- TAB 2: 24/7 SESSION & IN-BROWSER QR -->
+    <div id="tab-session" class="tab-pane">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">📱 In-Browser WhatsApp QR Scanner</div>
+          <div id="qrSection" class="qr-container">
+            <div id="qrLoading">Checking WhatsApp connection status...</div>
+            <img id="qrImage" class="qr-img" style="display:none;" alt="Scan WhatsApp QR" />
+            <p id="qrInstructions" style="font-size: 0.85rem; color: var(--text-muted); display:none;">
+              Open WhatsApp > <b>Settings > Linked Devices > Link a Device</b> and point your camera here.
+            </p>
+            <div id="qrConnected" style="display:none; color: var(--primary); font-weight: 700; padding: 1.5rem 0;">
+              ✅ WhatsApp Connected! No QR scan needed.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🔐 Permanent Cloud Session (Never Login Again)</div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.5;">
+            Copy this string and paste it into your <b>Render / Railway Dashboard > Environment Variables</b> as <code>GODZILLA_SESSION</code>. Once added, the bot will <b>never ask to scan QR code again</b> even after cloud restarts or deployments!
+          </p>
+          <div id="sessionBox" class="session-box">No session generated yet. Scan QR first.</div>
+          <div class="btn-group">
+            <button class="btn btn-success" onclick="copySession()">📋 Copy GODZILLA_SESSION</button>
+            <button class="btn btn-secondary" onclick="downloadSession()">📥 Download Backup</button>
+            <button class="btn" onclick="triggerAction('sendSessionToOwner')">💬 Send to My WhatsApp</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: GROUPS MANAGER -->
+    <div id="tab-groups" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>👥 Participating Groups (<span id="tableGroupCount">0</span>)</span>
+          <button class="btn btn-secondary" onclick="fetchStats()">🔄 Refresh Groups</button>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Group Name</th>
+                <th>Group ID (JID)</th>
+                <th>Members</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="groupsTableBody">
+              <tr><td colspan="4" style="color: var(--text-muted); text-align: center;">Loading groups list...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: BROADCAST & CHAT -->
+    <div id="tab-broadcast" class="tab-pane">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">📢 Broadcast Announcement to All Groups</div>
+          <div class="form-group" style="margin-top: 0;">
+            <label>Announcement Message</label>
+            <textarea id="broadcastText" class="form-control" placeholder="Write announcement to deliver across all participating groups..."></textarea>
+          </div>
+          <button class="btn btn-success" style="margin-top: 1rem; width: 100%;" onclick="sendBroadcast()">📢 Dispatch Group Broadcast</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💬 Send Direct WhatsApp Message</div>
+          <div class="form-group" style="margin-top: 0;">
+            <label>Recipient WhatsApp Number or Group ID</label>
+            <input type="text" id="directTarget" class="form-control" placeholder="e.g. 919876543210 or 12345-67890@g.us" />
+          </div>
+          <div class="form-group">
+            <label>Message Content</label>
+            <textarea id="directMessage" class="form-control" placeholder="Type message to send..."></textarea>
+          </div>
+          <button class="btn" style="margin-top: 1rem; width: 100%;" onclick="sendDirect()">✉️ Send Message</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: TERMINAL & SHELL -->
+    <div id="tab-terminal" class="tab-pane">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">⚡ Interactive Shell Execution</div>
+          <div class="form-group" style="margin-top: 0;">
+            <label>Terminal / Shell Command</label>
+            <input type="text" id="shellCmd" class="form-control" placeholder="e.g. git status, uptime, ls -la" />
+          </div>
+          <button class="btn btn-warning" style="margin-top: 0.75rem;" onclick="runShell()">Run Terminal Command</button>
+          <div class="form-group">
+            <label>Output Console</label>
+            <div id="shellOutput" class="terminal" style="height: 160px;">Ready for shell input...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💻 Dynamic JavaScript Eval Playground</div>
+          <div class="form-group" style="margin-top: 0;">
+            <label>JavaScript Expression (Full Runtime Access)</label>
+            <textarea id="evalCode" class="form-control" placeholder="e.g. Object.keys(config)"></textarea>
+          </div>
+          <button class="btn" style="margin-top: 0.75rem;" onclick="runEval()">Execute JavaScript</button>
+          <div class="form-group">
+            <label>Eval Result</label>
+            <div id="evalOutput" class="terminal" style="height: 160px; color: #a78bfa;">Ready for JS eval...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: SETTINGS -->
+    <div id="tab-settings" class="tab-pane">
+      <div class="card" style="max-width: 600px; margin: 0 auto;">
+        <div class="card-title">⚙️ Bot Settings & Configuration</div>
+
         <div class="form-group">
-          <label>Quick Prefix Change</label>
+          <label>Command Prefix</label>
           <div style="display: flex; gap: 0.5rem;">
-            <input type="text" id="inputPrefix" class="form-control" placeholder="e.g. !" style="max-width: 100px;" />
-            <button class="btn" onclick="triggerAction('setPrefix', { prefix: document.getElementById('inputPrefix').value })">Update</button>
+            <input type="text" id="cfgPrefix" class="form-control" style="max-width: 120px;" />
+            <button class="btn" onclick="triggerAction('setPrefix', { prefix: document.getElementById('cfgPrefix').value })">Update Prefix</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Bot Display Name</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="cfgName" class="form-control" />
+            <button class="btn" onclick="triggerAction('setName', { name: document.getElementById('cfgName').value })">Rename Bot</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Access Mode</label>
+          <div class="btn-group">
+            <button class="btn btn-success" onclick="triggerAction('setMode', { mode: 'public' })">Public (All)</button>
+            <button class="btn btn-warning" onclick="triggerAction('setMode', { mode: 'private' })">Private (Owner Only)</button>
+            <button class="btn" onclick="triggerAction('setMode', { mode: 'group' })">Group Mode Only</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Broadcast & Send Message Section -->
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
-      <div class="card">
-        <div class="card-title">📢 Broadcast Announcement to All Groups</div>
-        <textarea id="broadcastText" class="form-control" placeholder="Enter announcement text to deliver across all participating groups..."></textarea>
-        <button class="btn btn-success" style="margin-top: 1rem; width: 100%;" onclick="sendBroadcast()">📢 Send Group Broadcast</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">💬 Send Direct WhatsApp Message</div>
-        <input type="text" id="directTarget" class="form-control" placeholder="Phone with country code (e.g. 919876543210)" style="margin-bottom: 0.75rem;" />
-        <textarea id="directMessage" class="form-control" placeholder="Write message..."></textarea>
-        <button class="btn" style="margin-top: 1rem; width: 100%;" onclick="sendDirect()">✉️ Dispatch Message</button>
-      </div>
-    </div>
-
-    <!-- Live Logs Terminal -->
-    <div class="card" style="margin-top: 1.5rem;">
-      <div class="card-title" style="display: flex; justify-content: space-between;">
-        <span>📜 Live Terminal Activity Log</span>
-        <span style="font-size: 0.75rem; text-transform: none; color: #34d399;">● Auto-updating</span>
-      </div>
-      <div id="terminal" class="terminal">Loading logs...</div>
-    </div>
   </div>
 
   <script>
+    let currentSessionString = '';
+
     const savedKey = localStorage.getItem('godzilla_admin_key') || '';
     if (savedKey) document.getElementById('adminKey').value = savedKey;
 
@@ -437,6 +632,13 @@ export function renderWebDashboard() {
       setTimeout(() => { el.style.display = 'none'; }, 5000);
     }
 
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
     async function fetchStats() {
       try {
         const res = await fetch('/api/stats');
@@ -446,8 +648,11 @@ export function renderWebDashboard() {
         document.getElementById('headerBotName').innerText = d.botName;
         document.getElementById('valBotName').innerText = d.botName;
         document.getElementById('valPrefix').innerText = d.prefix;
+        document.getElementById('cfgPrefix').value = d.prefix;
+        document.getElementById('cfgName').value = d.botName;
         document.getElementById('valMode').innerText = d.mode.toUpperCase();
-        document.getElementById('valGroups').innerText = d.groups;
+        document.getElementById('valGroupCount').innerText = d.groupCount;
+        document.getElementById('tableGroupCount').innerText = d.groupCount;
         document.getElementById('valUptime').innerText = d.uptime;
 
         document.getElementById('valHeap').innerText = d.heapUsed + ' / ' + d.heapTotal;
@@ -463,11 +668,66 @@ export function renderWebDashboard() {
         const text = document.getElementById('statusText');
         if (d.isConnected) {
           badge.className = 'badge';
-          text.innerText = 'CONNECTED';
+          text.innerText = 'ONLINE 24/7';
         } else {
           badge.className = 'badge disconnected';
-          text.innerText = 'OFFLINE / WAITING';
+          text.innerText = 'OFFLINE / PAIRING';
         }
+
+        if (d.externalUrl) {
+          document.getElementById('valExternalUrl').innerText = d.externalUrl;
+          document.getElementById('valKeepAliveStatus').innerText = 'ACTIVE (Every 8m)';
+        }
+
+        // QR Code Handling
+        const qrImg = document.getElementById('qrImage');
+        const qrLoading = document.getElementById('qrLoading');
+        const qrInst = document.getElementById('qrInstructions');
+        const qrConn = document.getElementById('qrConnected');
+
+        if (d.isConnected) {
+          qrLoading.style.display = 'none';
+          qrImg.style.display = 'none';
+          qrInst.style.display = 'none';
+          qrConn.style.display = 'block';
+        } else if (d.qrCode) {
+          qrLoading.style.display = 'none';
+          qrImg.src = d.qrCode;
+          qrImg.style.display = 'block';
+          qrInst.style.display = 'block';
+          qrConn.style.display = 'none';
+        } else {
+          qrLoading.innerText = 'Waiting for WhatsApp pairing code...';
+          qrLoading.style.display = 'block';
+          qrImg.style.display = 'none';
+          qrInst.style.display = 'none';
+          qrConn.style.display = 'none';
+        }
+
+        // Session Handling
+        currentSessionString = d.sessionString || '';
+        const sBox = document.getElementById('sessionBox');
+        if (currentSessionString) {
+          sBox.innerText = currentSessionString;
+        } else {
+          sBox.innerText = 'No session generated yet. Scan QR first.';
+        }
+
+        // Groups table render
+        const tbody = document.getElementById('groupsTableBody');
+        if (d.groups && d.groups.length > 0) {
+          tbody.innerHTML = d.groups.map(g => \`
+            <tr>
+              <td><b>\${g.subject}</b></td>
+              <td><code>\${g.jid}</code></td>
+              <td>\${g.members} members</td>
+              <td><button class="btn btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="leaveGroup('\${g.jid}')">Leave</button></td>
+            </tr>
+          \`).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4" style="color: var(--text-muted); text-align: center;">No groups detected.</td></tr>';
+        }
+
       } catch {}
     }
 
@@ -476,7 +736,7 @@ export function renderWebDashboard() {
         const res = await fetch('/api/logs');
         if (res.ok) {
           const text = await res.text();
-          const term = document.getElementById('terminal');
+          const term = document.getElementById('terminalLog');
           term.innerText = text;
           term.scrollTop = term.scrollHeight;
         }
@@ -501,8 +761,31 @@ export function renderWebDashboard() {
         } else {
           showAlert(data.error || 'Action failed.', 'error');
         }
+        return data;
       } catch (err) {
         showAlert(err.message, 'error');
+      }
+    }
+
+    function copySession() {
+      if (!currentSessionString) return alert('No session string available yet. Scan QR first!');
+      navigator.clipboard.writeText(currentSessionString).then(() => {
+        showAlert('Copied GODZILLA_SESSION to clipboard! Paste it into Render / Railway env vars.', 'success');
+      });
+    }
+
+    function downloadSession() {
+      if (!currentSessionString) return alert('No session string available.');
+      const blob = new Blob([currentSessionString], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'GODZILLA_SESSION.txt';
+      a.click();
+    }
+
+    function leaveGroup(jid) {
+      if (confirm('Leave this group?')) {
+        triggerAction('leaveGroup', { jid });
       }
     }
 
@@ -521,6 +804,28 @@ export function renderWebDashboard() {
       document.getElementById('directMessage').value = '';
     }
 
+    async function runShell() {
+      const cmd = document.getElementById('shellCmd').value.trim();
+      if (!cmd) return alert('Enter shell command');
+      const box = document.getElementById('shellOutput');
+      box.innerText = 'Executing: ' + cmd + '...';
+      const res = await triggerAction('execShell', { command: cmd });
+      if (res && res.output) {
+        box.innerText = res.output;
+      }
+    }
+
+    async function runEval() {
+      const code = document.getElementById('evalCode').value.trim();
+      if (!code) return alert('Enter JS code');
+      const box = document.getElementById('evalOutput');
+      box.innerText = 'Evaluating...';
+      const res = await triggerAction('evalJs', { code });
+      if (res && res.output) {
+        box.innerText = res.output;
+      }
+    }
+
     fetchStats();
     fetchLogs();
     setInterval(fetchStats, 3000);
@@ -537,8 +842,8 @@ export async function handleDashboardRequest(req, res, getSock) {
   const url = req.url?.split('?')[0] || '/';
   const method = req.method;
 
-  // 1. JSON System Stats API
-  if (method === 'GET' && url === '/api/stats') {
+  // 1. JSON System Stats API & Health Check
+  if (method === 'GET' && (url === '/api/stats' || url === '/api/ping')) {
     const sock = getSock ? getSock() : null;
     const stats = await getSystemStats(sock);
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -572,7 +877,7 @@ export async function handleDashboardRequest(req, res, getSock) {
           if (!['public', 'private', 'group'].includes(data.mode)) throw new Error('Invalid mode');
           config.mode = data.mode;
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ message: `Mode changed to ${data.mode.toUpperCase()}` }));
+          return res.end(JSON.stringify({ message: `Access mode updated to ${data.mode.toUpperCase()}` }));
         }
 
         if (action === 'setPrefix') {
@@ -580,6 +885,13 @@ export async function handleDashboardRequest(req, res, getSock) {
           config.prefix = data.prefix.trim();
           res.writeHead(200, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ message: `Prefix changed to ${config.prefix}` }));
+        }
+
+        if (action === 'setName') {
+          if (!data.name) throw new Error('Name cannot be empty');
+          config.botName = data.name.trim();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ message: `Bot name updated to ${config.botName}` }));
         }
 
         if (action === 'clearTemp') {
@@ -603,6 +915,24 @@ export async function handleDashboardRequest(req, res, getSock) {
           res.end(JSON.stringify({ message: 'Bot reboot initiated...' }));
           setTimeout(() => process.exit(0), 1000);
           return;
+        }
+
+        if (action === 'sendSessionToOwner') {
+          if (!sock) throw new Error('Bot is not connected yet.');
+          const sessionString = await getSessionBase64();
+          if (!sessionString) throw new Error('No session available.');
+          await sock.sendMessage(config.ownerNumber, {
+            text: `🔐 *GODZILLA SESSION BACKUP (RENDER 24/7)*\n\nCopy this string and set as \`GODZILLA_SESSION\` in your Render Environment Variables:\n\n\`\`\`\n${sessionString}\n\`\`\``,
+          });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ message: 'Session sent to your WhatsApp number!' }));
+        }
+
+        if (action === 'leaveGroup') {
+          if (!sock) throw new Error('Bot is not connected');
+          await sock.groupLeave(data.jid);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ message: 'Left group successfully.' }));
         }
 
         if (action === 'broadcast') {
@@ -630,6 +960,29 @@ export async function handleDashboardRequest(req, res, getSock) {
           await sock.sendMessage(target, { text: data.message });
           res.writeHead(200, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ message: `Message sent to ${rawTarget}` }));
+        }
+
+        if (action === 'execShell') {
+          exec(data.command, { timeout: 30000 }, (err, stdout, stderr) => {
+            let output = stdout || '';
+            if (stderr) output += `\n[STDERR]:\n${stderr}`;
+            if (err) output += `\n[ERROR]:\n${err.message}`;
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ output: output.trim() || 'Command finished with no output.' }));
+          });
+          return;
+        }
+
+        if (action === 'evalJs') {
+          try {
+            let result = await eval(`(async () => { ${data.code} })()`);
+            if (typeof result !== 'string') result = util.inspect(result, { depth: 2 });
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ output: result }));
+          } catch (evalErr) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ output: `Error: ${evalErr.message}` }));
+          }
         }
 
         throw new Error(`Unknown action: ${action}`);

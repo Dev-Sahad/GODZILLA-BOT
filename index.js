@@ -17,11 +17,31 @@ import 'dotenv/config';
 import { config }        from './src/config.js';
 import { logger }        from './src/logger.js';
 import { handleMessage } from './src/handler.js';
-import { restoreSession } from './src/session.js';
+import { restoreSession, getSessionBase64 } from './src/session.js';
 import http              from 'http';
-import { handleDashboardRequest } from './src/dashboard.js';
+import axios             from 'axios';
+import QRCode            from 'qrcode';
+import { handleDashboardRequest, setLatestQr, clearLatestQr } from './src/dashboard.js';
 
 let currentSock = null;
+
+// ── 24/7 Keep-Alive Self-Pinger (Never sleep on Render / Koyeb / Railway) ─────
+function startKeepAlive() {
+  const externalUrl = process.env.RENDER_EXTERNAL_URL || process.env.APP_URL;
+  if (!externalUrl) return;
+
+  logger.info(`⏰ 24/7 Keep-Alive active for: ${externalUrl}`);
+  const target = externalUrl.endsWith('/') ? `${externalUrl}api/ping` : `${externalUrl}/api/ping`;
+
+  setInterval(async () => {
+    try {
+      await axios.get(target, { timeout: 12000 });
+      logger.info(`💓 24/7 Keep-Alive heartbeat sent to ${target}`);
+    } catch (err) {
+      logger.warn(`Keep-Alive heartbeat failed: ${err.message}`);
+    }
+  }, 8 * 60 * 1000); // 8 minutes (Render sleeps at 15m)
+}
 
 // ── Web Service Health & Admin Dashboard Server (Render / Railway / Cloud) ────
 const PORT = process.env.PORT;
@@ -32,6 +52,7 @@ if (PORT) {
 
   server.listen(PORT, () => {
     logger.info(`🌐 Web Admin Dashboard active on port ${PORT}`);
+    startKeepAlive();
   });
 }
 
@@ -69,16 +90,23 @@ async function connectBot() {
     if (qr) {
       logger.info('Scan the QR code below to link your WhatsApp:');
       qrcode.generate(qr, { small: true });
+      try {
+        const dataUrl = await QRCode.toDataURL(qr, { width: 320, margin: 2 });
+        setLatestQr(dataUrl);
+      } catch {}
     }
 
     if (connection === 'open') {
       logger.info(`✅ ${config.botName} connected successfully!`);
       logger.info(`📌 Prefix: ${config.prefix} | Mode: ${config.mode}`);
 
-      // Send startup message to owner
+      clearLatestQr();
+
+      // Automatically deliver permanent session backup to owner
       try {
+        const sessionStr = await getSessionBase64();
         await sock.sendMessage(config.ownerNumber, {
-          text: `✅ *${config.botName} is now Online!*\n\n📌 Prefix: \`${config.prefix}\`\n⚙️ Mode: ${config.mode}\n\n_Type ${config.prefix}help to see all commands_`,
+          text: `✅ *${config.botName} is now Online! 🦖*\n\n📌 Prefix: \`${config.prefix}\`\n⚙️ Mode: ${config.mode}\n\n🔐 *YOUR PERMANENT 24/7 SESSION STRING:*\n\`\`\`\n${sessionStr}\n\`\`\`\n\n📌 *To run 24/7 on Render without ever scanning QR code again:*\n1. Open your Render Dashboard.\n2. Go to Environment Variables.\n3. Add \`GODZILLA_SESSION\` with the string above.\n\nNow you can turn off your PC and the bot will stay online forever! 🚀`,
         });
       } catch {}
     }

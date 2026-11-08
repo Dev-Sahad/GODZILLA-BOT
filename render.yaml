@@ -2,7 +2,12 @@ services:
   - type: web
     name: godzilla-bot
     runtime: node
+    plan: free
+    buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /api/ping
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3000
